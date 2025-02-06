@@ -34,10 +34,6 @@ CoolingController::CoolingController() : Device() {
     commonName = "Cooling Controller";
     shortName = "CoolingController"; 
 
-    isAccumulatorPumpOn = false;
-    isMotorPumpOn = false;
-    isAccumulatorFanOn = false;
-    isMotorFanOn = false;
 
 }
 
@@ -74,6 +70,20 @@ void CoolingController::setup() {
     deviceManager.addStatusEntry(stat);    
 
     tickHandler.attach(this, CFG_TICK_INTERVAL_COOLCONTROL);
+
+    isAccumulatorPumpOn = false;
+    isMotorPumpOn = false;
+    isAccumulatorFanOn = false;
+    isMotorFanOn = false;
+
+    // for flow sensor
+    pulseCount = 0;
+    lastTickTime = 0;
+    flowRate = 0;
+    threshold = 67; 
+    calibrationFactor = 4.5;
+    tickInterval = 1000;
+    lastDigitalInputState = false; 
 }
 
 double evaluateExpression(double x) {
@@ -96,47 +106,43 @@ void CoolingController::handleTick() {
     // Retrieve the temperature of the motor and the accumulator
     int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
     int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-
-    //Retrieve the voltage of +5v for use in voltage divider/ flow temp calculation (tim)
-    double sourceVoltage = VoltageSensorPin * (5.0 / 3071.0);
-    if (sourceVoltage <= 0.001){
-        Logger:info(COOLCONTROL, "sourceVoltage is 0, should be +5V");
-    }
     
-    //Logger::info(COOLCONTROL, "Analog Temp Reading: %f", motorTemperatureAnalogReading);
     double convertedVoltage = (motorTemperatureAnalogReading * (5.0 / 3071.0));
-    //Logger::info(COOLCONTROL, "converted voltage %f", convertedVoltage);
-    if (motorTemperatureAnalogReading <= 0.000001){
-        Logger::info(COOLCONTROL, "convertedVolage is 0");
-    }
-    /*double division = (500000 / convertedVoltage) - 100000;
-    double result = evaluateExpression(division);*/
-    double resistor2 = (10000 * convertedVoltage) / (VoltageSensorPin - convertedVoltage); // (tim)VoltageSensorPin should be 5V, but the actual value on the GEVCU varies, so this uses the real value
-    //resistor 1 = 10K ohms
-    //Logger::info(COOLCONTROL, "Resistance: %f", resistor2);
-    double result = 0.000000101908 * resistor2 * resistor2 - 0.0054716 * resistor2 + 70.266021;
+    double division = (500000 / convertedVoltage) - 100000;
+    double result = evaluateExpression(division);
     Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
 
-
-
-
     // Running the PWM
-    // systemIO.setDigitalOutput(0,true);
-    // systemIO.setDigitalOutputPWM(0, 60, 400);
-    // systemIO.setDigitalOutput(1, true);
-    // systemIO.setDigitalOutputPWM(1, 60, 400);
-    // systemIO.setDigitalOutput(2,true);
-    // systemIO.setDigitalOutputPWM(2, 60, 400);
-    // systemIO.setDigitalOutput(3,true);
-    // systemIO.setDigitalOutputPWM(3, 60, 400);
-    // systemIO.setDigitalOutput(4,true);
-    // systemIO.setDigitalOutputPWM(4, 60, 400);
-    // systemIO.setDigitalOutput(5,true);
-    // systemIO.setDigitalOutputPWM(5, 60, 400);
-    // systemIO.setDigitalOutput(6,true);
-    // systemIO.setDigitalOutputPWM(6, 60, 400);
+    systemIO.setDigitalOutput(0,true);
+    systemIO.setDigitalOutputPWM(0, 60, 400);
+    systemIO.setDigitalOutput(1, true);
+    systemIO.setDigitalOutputPWM(1, 60, 400);
+    systemIO.setDigitalOutput(2,true);
+    systemIO.setDigitalOutputPWM(2, 60, 400);
+    systemIO.setDigitalOutput(3,true);
+    systemIO.setDigitalOutputPWM(3, 60, 400);
+    systemIO.setDigitalOutput(4,true);
+    systemIO.setDigitalOutputPWM(4, 60, 400);
+    systemIO.setDigitalOutput(5,true);
+    systemIO.setDigitalOutputPWM(5, 60, 400);
+    systemIO.setDigitalOutput(6,true);
+    systemIO.setDigitalOutputPWM(6, 60, 400);
     systemIO.setDigitalOutput(7,true);
     systemIO.setDigitalOutputPWM(7, 60, 400);
+
+     bool currentDigitalInputState = (bool) systemIO.getDigitalIn(config->flowSensorPin);
+    if (lastDigitalInputState == true && currentDigitalInputState == false) {
+        // Falling edge detected (HIGH to LOW transition)
+        pulseCount++;
+    }
+    lastDigitalInputState = currentDigitalInputState; // Update the last state
+
+    uint32_t currentTime = millis();
+    if (currentTime - lastTickTime >= (unsigned int)tickInterval) {
+        calculateFlowRate();
+        resetPulseCount();
+        lastTickTime = currentTime;
+    }
 }
 /*
  * Return the device ID
@@ -149,6 +155,26 @@ DeviceType CoolingController::getType()
 {
     return (DeviceType::DEVICE_CHARGER);
 }
+
+/*
+ * Reset the pulse count.
+ */
+void CoolingController::resetPulseCount() {
+    pulseCount = 0;
+}
+
+/*
+ * Calculate the flow rate.
+ */
+void CoolingController::calculateFlowRate() {
+    if (pulseCount >= threshold) {
+        flowRate = (pulseCount / calibrationFactor) * (6000 / tickInterval);
+    } else {
+        flowRate = 0;
+    }
+    Logger::info(COOLCONTROL, "Flow Rate: %f L/min", flowRate);
+}
+
 
 /*
  * Load the device configuration.
@@ -167,12 +193,14 @@ void CoolingController::loadConfiguration() {
     Device::loadConfiguration(); // call parent
 
     //TODO Change pin number to pin for input
-    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 5); // ANALOG0 PIN (5-13thjan) (tim)is there an issue with mispelling? it is consistent, but ?
+    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 0); // ANALOG0 PIN
     prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 1); // ANALOG1 PIN
     prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
     prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
     prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
     prefsHandler->read("waterMotorPin", &config->waterMotorPin, 255);
+    prefsHandler->read("flowSensorPin", &config->flowSensorPin, 0);
+
 
     prefsHandler->read("motorPumpOnTemperature", &config->motorPumpOnTemperature, 0);
     prefsHandler->read("motorPumpOffTempearture", &config->motorPumpOffTempearture, 0);
@@ -183,8 +211,6 @@ void CoolingController::loadConfiguration() {
     prefsHandler->read("motorFanOffTemperature", &config->motorFanOffTemperature, 0);
     prefsHandler->read("accumulatorFanOnTemperature", &config->accumulatorFanOnTemperature, 0);
     prefsHandler->read("accumulatorFanOffTemperature", &config->accumulatorFanOffTemperature, 0);
-
-    prefsHandler->read("VoltageSensorPin", &config->VoltageSensorPin, 7); //tim voltage sensor 
 }
 /*
  * Store the current configuration to EEPROM
@@ -201,6 +227,8 @@ void CoolingController::saveConfiguration() {
     prefsHandler->write("fanMotorPin", config->fanMotorPin);
     prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
     prefsHandler->write("waterMotorPin", config->waterMotorPin);
+    prefsHandler->write("flowSensorPin", config->flowSensorPin);
+
 
     prefsHandler->write("motorPumpOnTemperature", config->motorPumpOnTemperature);
     prefsHandler->write("motorPumpOffTempearture", config->motorPumpOffTempearture);
@@ -211,8 +239,6 @@ void CoolingController::saveConfiguration() {
     prefsHandler->write("motorFanOffTemperature", config->motorFanOffTemperature);
     prefsHandler->write("accumulatorFanOnTemperature", config->accumulatorFanOnTemperature);
     prefsHandler->write("accumulatorFanOffTemperature", config->accumulatorFanOffTemperature);
-
-    prefsHandler->write("VoltageSensorPin", config->VoltageSensorPin); //tim voltage sensor 
 
     prefsHandler->saveChecksum();
     prefsHandler->forceCacheWrite();

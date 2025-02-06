@@ -50,6 +50,7 @@ public:
     uint8_t waterMotorPin;
     uint8_t accumulatorTemperatureSensorPin;
     uint8_t motorTemperatureSensorPin;
+    uint8_t flowSensorPin;
 
     float motorPumpOnTemperature;
     float motorPumpOffTempearture;
@@ -75,6 +76,9 @@ public:
     void loadConfiguration();
     void saveConfiguration();
 
+    void resetPulseCount();
+    void calculateFlowRate();
+
 protected:
 
 private:
@@ -82,6 +86,14 @@ private:
     bool isMotorPumpOn;
     bool isAccumulatorFanOn;
     bool isMotorFanOn;
+
+    int  pulseCount;
+    uint32_t lastTickTime;
+    float flowRate;
+    int threshold; 
+    float calibrationFactor;
+    uint32_t tickInterval;
+    bool lastDigitalInputState; 
 };
 
 #endif
