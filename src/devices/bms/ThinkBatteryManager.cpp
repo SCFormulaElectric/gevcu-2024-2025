@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "ThinkBatteryManager.h"
+#include "FaultCodes.h"
 
 ThinkBatteryManager::ThinkBatteryManager() : BatteryManager() {
     allowCharge = false;
@@ -94,6 +95,61 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 1);
     canHandlerBus0.process(frame);
     switch (frame.id) {
+        case 0x308: // Cell Data
+            {
+                uint8_t cellID = frame.buf[0];
+                uint16_t instantVoltage = (frame.buf[1] << 8) | frame.buf[2]; // 0.1mV unit
+                uint16_t internalResistance = ((frame.buf[3] & 0x7F) << 8) | frame.buf[4]; // 0.01mOhm unit
+                uint16_t openVoltage = (frame.buf[5] << 8) | frame.buf[6]; // 0.1mV unit
+                bool isShunting = (frame.buf[3] & 0x80) != 0; // Bit 8 in byte 3
+
+                // Checksum verification
+                uint8_t checksum = frame.buf[7];
+                uint16_t computedChecksum = frame.id + 8; // Step 1
+                for (int i = 0; i < 7; i++) {
+                    computedChecksum += frame.buf[i]; // Step 2
+                }
+                computedChecksum &= 0xFF; // Step 3 - Keep only the least significant 8 bits
+
+                if ((uint8_t)computedChecksum != checksum) {
+                    // Invalid data, discard values
+                    return;
+                }
+            }
+            break;
+
+        case 0x309: // Fault Data
+            {
+                uint8_t checksum = frame.buf[7];
+                uint16_t computedChecksum = frame.id + 8; // Step 1
+                for (int i = 0; i < 7; i++) {
+                    computedChecksum += frame.buf[i]; // Step 2
+                }
+                computedChecksum &= 0xFF; // Step 3
+
+                if ((uint8_t)computedChecksum != checksum) {
+                    Logger::error("BMS Fault Data: Checksum mismatch!");
+                    return;
+                }
+
+                // Extract the 32-bit fault register (assuming the fault register is in the first 4 bytes)
+                uint32_t faultRegister = (frame.buf[0] << 24) | (frame.buf[1] << 16) | (frame.buf[2] << 8) | frame.buf[3];
+
+                Logger::info("BMS Fault Codes:");
+
+                // Iterate over the faultCodeMap to check which bits are set
+                for (const auto &fault : faultCodeMap) {
+                    uint32_t faultMask = fault.first;  // Fault bit mask (e.g., 0x80000000 for P0AA1)
+                    
+                    // If the corresponding fault bit is set in the faultRegister
+                    if (faultRegister & faultMask) {
+                        // Output the fault code and description
+                        Logger::info("  Fault Code: %s (%s)", fault.second.first.c_str(), fault.second.second.c_str());
+                    }
+                }
+            }
+            break;
+
 
     }
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 2);
