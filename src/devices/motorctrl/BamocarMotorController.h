@@ -11,6 +11,7 @@
 #include "../../sys_io.h"
 #include "../../TickHandler.h"
 #include "../../CanHandler.h"
+#include "../misc/Statemachine.h"
 
 #define BAMOCARINVERTER 0x1010
 #define CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR     40000

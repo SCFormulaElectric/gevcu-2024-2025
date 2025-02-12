@@ -2,8 +2,11 @@
  * BamocarMotorController.cpp
  */
 #include "BamocarMotorController.h"
+#include "../misc/Statemachine.h"
 #include <sstream>
-#include "../../Statemachine.h"
+
+
+class StatemachineDevice;
 
 BamocarMotorController::BamocarMotorController() : MotorController() {    
     selectedGear = DRIVE;

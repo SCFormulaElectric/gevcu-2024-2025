@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "src/SerialConsole.h"
 #include "src/Sys_Messages.h"
 #include "src/FaultHandler.h"
-#include "src/Statemachine.h"
+// #include "src/Statemachine.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
