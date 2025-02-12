@@ -31,7 +31,11 @@
 State extern_curr_state = S0;  // Define and initialize the variable here
 
 
-StatemachineDevice::StatemachineDevice(PotBrake *brake) : potBrake(brake) {}
+StatemachineDevice::StatemachineDevice(PotBrake *brake){
+  commonName = "Statemachine";
+  shortName = "SM";
+  potBrake = brake;
+}
 
 StatemachineDevice::StatemachineDevice():Device() {
     commonName = "Statemachine";
@@ -120,14 +124,14 @@ void StatemachineDevice::handleTick() {
 
   // brake = PotBrake.getLevel();
   int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
-  brake = 10;                           // change this until it's time to test the pressure sensor 
+  brakeLevel = 10;                           // change this until it's time to test the pressure sensor 
 
   tsms   = systemIO.getDigitalIn(4);
   r2d    = systemIO.getDigitalIn(5);
   tsms   = 1;                           // testing purposes
   r2d    = 1;                           // testing purposes
 
-  if (brake < 20)                       // change the value above some threshold
+  if (brakeLevel < 20)                       // change the value above some threshold
   {
     threshold_brake = true;
   }
@@ -189,12 +193,24 @@ void StatemachineDevice::handleTick() {
 }
 
 
-void checkBrakeLevel() { // help with chat to get the function over here
+void StatemachineDevice::checkBrakeLevel() { // help with chat to get the function over here
         if (potBrake) {
             int16_t level = potBrake->getLevel();
             Serial.println("Brake Level: " + String(level));
         }
     }
+  
+
+void StatemachineDevice::loadConfiguration() {
+  Device::loadConfiguration();
+}
+
+/*
+* Store the current configuration to EEPROM
+*/
+void StatemachineDevice::saveConfiguration() {
+  Device::loadConfiguration();
+}
 
 // testDevice test_device;
 StatemachineDevice statemachine_device;

@@ -50,6 +50,7 @@ public:
 class PotBrake: public Throttle {
 public:
     PotBrake();
+    PotBrake(PotBrake* Potbrake);
     void setup();
     void earlyInit();
     void handleTick();
