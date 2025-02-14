@@ -31,11 +31,11 @@
 State extern_curr_state = S0;  // Define and initialize the variable here
 
 
-StatemachineDevice::StatemachineDevice(PotBrake *brake){
-  commonName = "Statemachine";
-  shortName = "SM";
-  potBrake = brake;
-}
+// StatemachineDevice::StatemachineDevice(PotBrake *brake){
+//   commonName = "Statemachine";
+//   shortName = "SM";
+//   potBrake = brake;
+// }
 
 StatemachineDevice::StatemachineDevice():Device() {
     commonName = "Statemachine";
@@ -123,7 +123,7 @@ void StatemachineDevice::handleTick() {
   // brake2 = 0;
 
   // brake = PotBrake.getLevel();
-  int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
+  // int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
   brakeLevel = 10;                           // change this until it's time to test the pressure sensor 
 
   tsms   = systemIO.getDigitalIn(4);
@@ -193,12 +193,12 @@ void StatemachineDevice::handleTick() {
 }
 
 
-void StatemachineDevice::checkBrakeLevel() { // help with chat to get the function over here
-        if (potBrake) {
-            int16_t level = potBrake->getLevel();
-            Serial.println("Brake Level: " + String(level));
-        }
-    }
+// void StatemachineDevice::checkBrakeLevel() { // help with chat to get the function over here
+//         if (potBrake) {
+//             int16_t level = potBrake->getLevel();
+//             Serial.println("Brake Level: " + String(level));
+//         }
+//     }
   
 
 void StatemachineDevice::loadConfiguration() {
