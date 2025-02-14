@@ -124,7 +124,7 @@ void StatemachineDevice::handleTick() {
 
   // brake = PotBrake.getLevel();
   // int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
-  brakeLevel = 10;                           // change this until it's time to test the pressure sensor 
+  int brakeLevel = 10;                           // change this until it's time to test the pressure sensor 
 
   tsms   = systemIO.getDigitalIn(4);
   r2d    = systemIO.getDigitalIn(5);

@@ -39,7 +39,7 @@ public:
     // State getState();     // not needed because the state is no longer private, public  
     void updateState(State); // just a function to update state, looks better
 
-    StatemachineDevice(PotBrake *brake);  // added
+    // StatemachineDevice(PotBrake *brake);  // added
 
 private:
     // State curr_state;        
