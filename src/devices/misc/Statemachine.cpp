@@ -124,14 +124,18 @@ void StatemachineDevice::handleTick() {
 
   // brake = PotBrake.getLevel();
   // int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
-  int brakeLevel = 10;                           // change this until it's time to test the pressure sensor 
+  // int brakeLevel = 10;                           // change this until it's time to test the pressure sensor
 
-  tsms   = systemIO.getDigitalIn(4);
-  r2d    = systemIO.getDigitalIn(5);
+
+  tsms   = systemIO.getDigitalIn(2);    // i think this is equivalent to the shutdown
+  r2d    = systemIO.getDigitalIn(1);
+  int brakeA    = systemIO.getAnalogIn(6);
+  int brakeB    = systemIO.getAnalogIn(7);
+
   tsms   = 1;                           // testing purposes
   r2d    = 1;                           // testing purposes
 
-  if (brakeLevel < 20)                       // change the value above some threshold
+  if (brakeA < 20)                       // change the value above some threshold
   {
     threshold_brake = true;
   }
