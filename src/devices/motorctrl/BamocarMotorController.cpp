@@ -32,7 +32,7 @@ void BamocarMotorController::setup() {
     setSelectedGear(DRIVE);
     setOpState(ENABLE);
 
-    setAttachedCANBus(0);
+    setAttachedCANBus(1);
     //Can Message to Bamocar for the actual speed
     attachedCANBus->attach(this, 0x100, 0x000, false);
     

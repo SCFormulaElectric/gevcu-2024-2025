@@ -16,7 +16,7 @@ void DashboardDevice::setup() {
     tickHandler.detach(this);
     Logger::info("add device: DashboardDevice (id: %X, %X)", DashboardID, this);
     Device::setup(); // run the parent class version of this function
-    setAttachedCANBus(0);
+    setAttachedCANBus(1);
     //Bamocar only sends ID 190. if needed we can add more things that it listens to later (ie. BMS)
     attachedCANBus->attach(this, 0x190, 0xfff, false);
     tickHandler.attach(this, DashboardTickInt);

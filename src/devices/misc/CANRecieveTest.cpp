@@ -17,7 +17,7 @@ void CANRecieveTest::setup() {
 
     Device::setup(); // run the parent class version of this function
 
-    setAttachedCANBus(0);
+    setAttachedCANBus(1);
 
     //Relevant BMS messages are 0x300 - 0x30F
     attachedCANBus->attach(this, 0x300, 0x7f0, false);
