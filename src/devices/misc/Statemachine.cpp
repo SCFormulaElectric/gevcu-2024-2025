@@ -25,6 +25,14 @@
     - changed to pot brake value and merged with tim's code 
     - we have the brake pressure sensors, but we can't test it without the fluid
     - so we have to wait till next year
+
+    02/25/25
+    - need to test the brake pressure sensor 
+    - test for latter 
+    - we have 2 brake pressure sensors, do we cross then or does only one of them actually do any thing
+    - brake in 2 weeks after the frame is painted 
+    - technically they should be within a few from each other 
+    - NOTE: the canbus on the gevcu is not working 
 */
 
 
@@ -127,19 +135,19 @@ void StatemachineDevice::handleTick() {
   // int brakeLevel = 10;                           // change this until it's time to test the pressure sensor
 
 
-  tsms   = systemIO.getDigitalIn(2);    // i think this is equivalent to the shutdown
-  r2d    = systemIO.getDigitalIn(1);
-  int brakeA    = systemIO.getAnalogIn(6);
-  int brakeB    = systemIO.getAnalogIn(7);
+  tsms       = systemIO.getDigitalIn(2);    // i think this is equivalent to the shutdown
+  r2d        = systemIO.getDigitalIn(1);
+  int brakeA = systemIO.getAnalogIn(6);     // read same pressure as B?
+  int brakeB = systemIO.getAnalogIn(7);     // read same pressure as A?
 
-  tsms   = 1;                           // testing purposes
-  r2d    = 1;                           // testing purposes
+  tsms  = 1;                                // testing purposes
+  r2d   = 1;                                // testing purposes
 
-  if (brakeA < 20)                       // change the value above some threshold
+  if (abs(brakeA - brakeB) < 300)                       // change the value above some threshold
   {
     threshold_brake = true;
   }
-  threshold_brake = true;
+  // threshold_brake = true;
   if (extern_curr_state == S0) {        // state 0, this is tested
     if(threshold_brake && tsms && r2d){
       updateState(S1);
