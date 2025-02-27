@@ -75,6 +75,7 @@ public:
 
     void loadConfiguration();
     void saveConfiguration();
+    void handleCanFrame(const CAN_message_t &frame);
 
     void resetPulseCount();
     void calculateFlowRate();

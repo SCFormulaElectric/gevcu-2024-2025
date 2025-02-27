@@ -48,6 +48,8 @@ void CoolingController::earlyInit()
 void CoolingController::setup() {
     crashHandler.addBreadcrumb(ENCODE_BREAD("COOLING") + 0);
     tickHandler.detach(this); // unregister from TickHandler first
+    setAttachedCANBus(1);
+    attachedCANBus->attach(this, 0x200, 0x7f0, false);
 
     Logger::info("add device: CoolingController (id: %X, %X)", COOLCONTROL, this);
 
@@ -113,22 +115,22 @@ void CoolingController::handleTick() {
     Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
 
     // Running the PWM
-    systemIO.setDigitalOutput(0,true);
-    systemIO.setDigitalOutputPWM(0, 60, 400);
-    systemIO.setDigitalOutput(1, true);
-    systemIO.setDigitalOutputPWM(1, 60, 400);
-    systemIO.setDigitalOutput(2,true);
-    systemIO.setDigitalOutputPWM(2, 60, 400);
-    systemIO.setDigitalOutput(3,true);
-    systemIO.setDigitalOutputPWM(3, 60, 400);
-    systemIO.setDigitalOutput(4,true);
-    systemIO.setDigitalOutputPWM(4, 60, 400);
-    systemIO.setDigitalOutput(5,true);
-    systemIO.setDigitalOutputPWM(5, 60, 400);
-    systemIO.setDigitalOutput(6,true);
-    systemIO.setDigitalOutputPWM(6, 60, 400);
-    systemIO.setDigitalOutput(7,true);
-    systemIO.setDigitalOutputPWM(7, 60, 400);
+    // systemIO.setDigitalOutput(0,true);
+    // systemIO.setDigitalOutputPWM(0, 60, 400);
+    // systemIO.setDigitalOutput(1, true);
+    // systemIO.setDigitalOutputPWM(1, 60, 400);
+    // systemIO.setDigitalOutput(2,true);
+    // systemIO.setDigitalOutputPWM(2, 60, 400);
+    // systemIO.setDigitalOutput(3,true);
+    // systemIO.setDigitalOutputPWM(3, 60, 400);
+    // systemIO.setDigitalOutput(4,true);
+    // systemIO.setDigitalOutputPWM(4, 60, 400);
+    // systemIO.setDigitalOutput(5,true);
+    // systemIO.setDigitalOutputPWM(5, 60, 400);
+    // systemIO.setDigitalOutput(6,true);
+    // systemIO.setDigitalOutputPWM(6, 60, 400);
+    // systemIO.setDigitalOutput(7,true);
+    // systemIO.setDigitalOutputPWM(7, 60, 400);
 
      bool currentDigitalInputState = (bool) systemIO.getDigitalIn(config->flowSensorPin);
     if (lastDigitalInputState == true && currentDigitalInputState == false) {
@@ -175,6 +177,24 @@ void CoolingController::calculateFlowRate() {
     Logger::info(COOLCONTROL, "Flow Rate: %f L/min", flowRate);
 }
 
+
+void CoolingController::handleCanFrame(const CAN_message_t &frame){
+    switch(frame.buf[0]){
+        case 0x49: //motor 
+            if(decode_hex(frame_buf[2], frame_buf[1]) >= 45){
+                
+            }
+        case 0x4a: //motor controller 
+            if(decode_hex(frame_buf[2], frame_buf[1]) >= 70){
+
+            }
+    }
+}
+
+int CoolingController::decode_hex(const int64_t first_half, const int64_t second_half) const{
+    //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
+    return second_half * 256 + first_half;
+}
 
 /*
  * Load the device configuration.
