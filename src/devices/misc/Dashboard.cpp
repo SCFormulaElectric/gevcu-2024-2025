@@ -32,7 +32,7 @@ void DashboardDevice::setup() {
     prev_battery = 99999;
 
     var.len = 4; // changed to 4, max space for classes
-    var.id = 0x203; // Can change the ID if needed
+    var.id = 0x444; // Can change the ID if needed -> updated to 0x444 20250303
 }
 /**
  * since the can frames come into with backward order, we will have to reverse them again and add the two numbers.
