@@ -34,7 +34,6 @@ CoolingController::CoolingController() : Device() {
     commonName = "Cooling Controller";
     shortName = "CoolingController"; 
 
-
 }
 
 void CoolingController::earlyInit()
@@ -86,6 +85,12 @@ void CoolingController::setup() {
     calibrationFactor = 4.5;
     tickInterval = 1000;
     lastDigitalInputState = false; 
+
+    MAX_MOTOR_TEMP = 45;
+    MAX_MOTOR_CTRL_TEMP = 70;
+    motor_temp_percentage = 0;
+    motor_ctrl_temp_percentage = 0;
+
 }
 
 double evaluateExpression(double x) {
@@ -114,23 +119,32 @@ void CoolingController::handleTick() {
     double result = evaluateExpression(division);
     Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
 
-    // Running the PWM
-    // systemIO.setDigitalOutput(0,true);
-    // systemIO.setDigitalOutputPWM(0, 60, 400);
-    // systemIO.setDigitalOutput(1, true);
-    // systemIO.setDigitalOutputPWM(1, 60, 400);
-    // systemIO.setDigitalOutput(2,true);
-    // systemIO.setDigitalOutputPWM(2, 60, 400);
-    // systemIO.setDigitalOutput(3,true);
-    // systemIO.setDigitalOutputPWM(3, 60, 400);
-    // systemIO.setDigitalOutput(4,true);
-    // systemIO.setDigitalOutputPWM(4, 60, 400);
-    // systemIO.setDigitalOutput(5,true);
-    // systemIO.setDigitalOutputPWM(5, 60, 400);
-    // systemIO.setDigitalOutput(6,true);
-    // systemIO.setDigitalOutputPWM(6, 60, 400);
-    // systemIO.setDigitalOutput(7,true);
-    // systemIO.setDigitalOutputPWM(7, 60, 400);
+    double max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    if(max_temp_percent >= 0.9){
+         //duty cycle 90
+         //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 90, 400);
+    }
+    else if(max_temp_percent >= 0.8){
+        //duty cycle 80
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 80, 400);
+    }
+    else if(max_temp_percent>= 0.7){
+        //duty cycle 70
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
+    }
+    else if(max_temp_percent>= 0.6){
+        //duty cycle 60
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
+    }
+
 
      bool currentDigitalInputState = (bool) systemIO.getDigitalIn(config->flowSensorPin);
     if (lastDigitalInputState == true && currentDigitalInputState == false) {
@@ -179,15 +193,12 @@ void CoolingController::calculateFlowRate() {
 
 
 void CoolingController::handleCanFrame(const CAN_message_t &frame){
+    u_int8_t temp = decode_hex(frame_buf[2], frame_buf[1]);
     switch(frame.buf[0]){
-        case 0x49: //motor 
-            if(decode_hex(frame_buf[2], frame_buf[1]) >= 45){
-                
-            }
+        case 0x49: //motor
+            motor_temp_percentage = temp/MAX_MOTOR_TEMP;
         case 0x4a: //motor controller 
-            if(decode_hex(frame_buf[2], frame_buf[1]) >= 70){
-
-            }
+            motor_ctrl_temp_percentage = temp/MAX_MOTOR_TEMP;
     }
 }
 
@@ -218,11 +229,11 @@ void CoolingController::loadConfiguration() {
     prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
     prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
     prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
-    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 255);
+    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 9);
     prefsHandler->read("flowSensorPin", &config->flowSensorPin, 0);
 
 
-    prefsHandler->read("motorPumpOnTemperature", &config->motorPumpOnTemperature, 0);
+    /*prefsHandler->read("motorPumpOnTemperature", &config->motorPumpOnTemperature, 0);
     prefsHandler->read("motorPumpOffTempearture", &config->motorPumpOffTempearture, 0);
     prefsHandler->read("accumulatorPumpOnTemperature", &config->accumulatorPumpOnTemperature, 0);
     prefsHandler->read("accumulatorPumpOffTemperature", &config->accumulatorPumpOffTemperature, 0);
@@ -230,7 +241,7 @@ void CoolingController::loadConfiguration() {
     prefsHandler->read("motorFanOnTemperature", &config->motorFanOnTemperature, 0);
     prefsHandler->read("motorFanOffTemperature", &config->motorFanOffTemperature, 0);
     prefsHandler->read("accumulatorFanOnTemperature", &config->accumulatorFanOnTemperature, 0);
-    prefsHandler->read("accumulatorFanOffTemperature", &config->accumulatorFanOffTemperature, 0);
+    prefsHandler->read("accumulatorFanOffTemperature", &config->accumulatorFanOffTemperature, 0);*/
 }
 /*
  * Store the current configuration to EEPROM
@@ -243,14 +254,14 @@ void CoolingController::saveConfiguration() {
     //TODO Change pin number to pin for input
     prefsHandler->write("motorTempeartureSensorPin", config->motorTemperatureSensorPin);
     prefsHandler->write("accumulatorTempeartureSensorPin", config->accumulatorTemperatureSensorPin);
-    prefsHandler->write("fanAccumulatorPin", config->fanAccumulatorPin);
-    prefsHandler->write("fanMotorPin", config->fanMotorPin);
-    prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
+    // prefsHandler->write("fanAccumulatorPin", config->fanAccumulatorPin);
+    // prefsHandler->write("fanMotorPin", config->fanMotorPin);
+    //prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
     prefsHandler->write("waterMotorPin", config->waterMotorPin);
-    prefsHandler->write("flowSensorPin", config->flowSensorPin);
+    // prefsHandler->write("flowSensorPin", config->flowSensorPin);
 
 
-    prefsHandler->write("motorPumpOnTemperature", config->motorPumpOnTemperature);
+   /*prefsHandler->write("motorPumpOnTemperature", config->motorPumpOnTemperature);
     prefsHandler->write("motorPumpOffTempearture", config->motorPumpOffTempearture);
     prefsHandler->write("accumulatorPumpOnTemperature", config->accumulatorPumpOnTemperature);
     prefsHandler->write("accumulatorPumpOffTemperature", config->accumulatorPumpOffTemperature);
@@ -261,7 +272,7 @@ void CoolingController::saveConfiguration() {
     prefsHandler->write("accumulatorFanOffTemperature", config->accumulatorFanOffTemperature);
 
     prefsHandler->saveChecksum();
-    prefsHandler->forceCacheWrite();
+    prefsHandler->forceCacheWrite();*/
 }
 
 CoolingController coolingController;

@@ -95,6 +95,11 @@ private:
     float calibrationFactor;
     uint32_t tickInterval;
     bool lastDigitalInputState; 
+
+    const int MAX_MOTOR_TEMP;
+    const int MAX_MOTOR_CTRL_TEMP;
+    uint8_t motor_temp_percentage;
+    u_int8_t motor_ctrl_temp_percentage;
 };
 
 #endif
