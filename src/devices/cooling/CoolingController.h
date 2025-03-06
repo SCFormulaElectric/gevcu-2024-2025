@@ -44,24 +44,25 @@
 class CoolingControllerConfiguration: public DeviceConfiguration {
 public:
     //I/O pins
-    uint8_t fanAccumulatorPin;
-    uint8_t fanMotorPin;
-    uint8_t waterAccumulatorPin;
+    // uint8_t fanAccumulatorPin;
+    // uint8_t fanMotorPin;
+    // uint8_t waterAccumulatorPin;
     uint8_t waterMotorPin;
-    uint8_t accumulatorTemperatureSensorPin;
-    uint8_t motorTemperatureSensorPin;
-    uint8_t flowSensorPin;
+    uint8_t radiatorFanPin;
+    // uint8_t accumulatorTemperatureSensorPin;
+    // uint8_t motorTemperatureSensorPin;
+    // uint8_t flowSensorPin;
 
-    float motorPumpOnTemperature;
-    float motorPumpOffTempearture;
-    float accumulatorPumpOnTemperature;
-    float accumulatorPumpOffTemperature;
+    // float motorPumpOnTemperature;
+    // float motorPumpOffTempearture;
+    // float accumulatorPumpOnTemperature;
+    // float accumulatorPumpOffTemperature;
 
 
-    float motorFanOnTemperature;
-    float motorFanOffTemperature;
-    float accumulatorFanOnTemperature;
-    float accumulatorFanOffTemperature;
+    // float motorFanOnTemperature;
+    // float motorFanOffTemperature;
+    // float accumulatorFanOnTemperature;
+    // float accumulatorFanOffTemperature;
 };
 
 class CoolingController: public Device {
@@ -83,21 +84,22 @@ public:
 protected:
 
 private:
-    bool isAccumulatorPumpOn;
-    bool isMotorPumpOn;
-    bool isAccumulatorFanOn;
-    bool isMotorFanOn;
+    // bool isAccumulatorPumpOn;
+    // bool isMotorPumpOn;
+    // bool isAccumulatorFanOn;
+    // bool isMotorFanOn;
 
-    int  pulseCount;
-    uint32_t lastTickTime;
-    float flowRate;
-    int threshold; 
-    float calibrationFactor;
-    uint32_t tickInterval;
-    bool lastDigitalInputState; 
+    // int  pulseCount;
+    // uint32_t lastTickTime;
+    // float flowRate;
+    // int threshold; 
+    // float calibrationFactor;
+    // uint32_t tickInterval;
+    // bool lastDigitalInputState; 
 
     const int MAX_MOTOR_TEMP;
     const int MAX_MOTOR_CTRL_TEMP;
+    int speed;
     uint8_t motor_temp_percentage;
     u_int8_t motor_ctrl_temp_percentage;
 };
