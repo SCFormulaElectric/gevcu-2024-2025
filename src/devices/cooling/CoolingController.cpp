@@ -94,6 +94,9 @@ void CoolingController::setup() {
 
 }
 
+/*
+    Convert resistance to temperature.
+*/
 double evaluateExpression(double x) {
     double exponent = -1.11 * pow(10, -4) * x;
     double result = 76.9 * exp(exponent);
