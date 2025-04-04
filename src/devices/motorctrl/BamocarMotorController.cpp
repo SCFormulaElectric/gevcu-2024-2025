@@ -101,7 +101,6 @@ void BamocarMotorController::handleTick() {
     if (throttleRequested > 1400) throttleRequested = 0;
 
     throttleAnalogValue = throttleRequested / 10 * 10; // rounding it to the nearest 10th percent
-    throttleAnalogValue = 50;
     if (throttleAnalogValue < 50)
     {
         throttleAnalogValue = 0;
@@ -117,7 +116,7 @@ void BamocarMotorController::handleTick() {
     else{
         // throttleAnalogValue = throttleAnalogValue/20;
         //131071 is 2^17-1 which is in binary is 16 1's since this uses two's complement, this gives you a speed of around -1, as A increases to its max of 100, it will subtract around 2^16-1 from the binary giving you just a leading bit of 1 and a very large negative number as your speed.
-        mappedMotorTorque = 0;
+        mappedMotorTorque = throttleAnalogValue/10 * 327;
         // (the following comments disregard the if/else statement)
         // at a = 0 (throttle not pressed), a becomes 2^17 -1 which is 17 1s. When this number is passed through first and second half and through the frame, the 17th bit gets truncated (buf values are 8 bits) --> -1 speed command
         // at a = 1000 (fully pressed), a becomes 65535 which is 16 1s. 
@@ -149,10 +148,10 @@ void BamocarMotorController::handleTick() {
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
-    Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-                      frame.id, frame.len, 
-                      frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-                      frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+    // Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+    //                   frame.id, frame.len, 
+    //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+    //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
 }
 
 void BamocarMotorController::setGear(Gears gear) {
