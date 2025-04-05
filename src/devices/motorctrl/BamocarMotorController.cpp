@@ -79,10 +79,10 @@ void BamocarMotorController::setup() {
 
     //FOR DEBUGGING - TESTING
     //send message to get mains voltage update every 100ms.
-    var.buf[0] = 0x3D;
-    var.buf[1] = 0x06;
-    var.buf[2] = 0x64;
-    attachedCANBus->sendFrame(var);
+    // var.buf[0] = 0x3D;
+    // var.buf[1] = 0x06;
+    // var.buf[2] = 0x64;
+    // attachedCANBus->sendFrame(var);
 
 }
 
@@ -157,17 +157,17 @@ void BamocarMotorController::handleTick() {
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
-    // Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-    //                   frame.id, frame.len, 
-    //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-    //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
-    switch (frame.buf[0]) {
-        case 0x06: 
-            int voltage = frame.buf[2] * 256 + frame.buf[1];
-            Logger::console("Voltage reading : %d", voltage);
-            break;    
+    Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+                      frame.id, frame.len, 
+                      frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+                      frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+    // switch (frame.buf[0]) {
+    //     case 0x06: 
+    //         int voltage = frame.buf[2] * 256 + frame.buf[1];
+    //         Logger::console("Voltage reading : %d", voltage);
+    //         break;    
 
-        }
+    //     }
 }
 
 void BamocarMotorController::setGear(Gears gear) {
