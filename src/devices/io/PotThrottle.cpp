@@ -279,7 +279,7 @@ void PotThrottle::loadConfiguration() {
         prefsHandler->read("NumThrottles", &config->numberPotMeters, 2);
         prefsHandler->read("ThrottleType", &config->throttleSubType, 1);
         prefsHandler->read("ADC1", &config->AdcPin1, 0);
-        prefsHandler->read("ADC2", &config->AdcPin2, 4);
+        prefsHandler->read("ADC2", &config->AdcPin2, 1);
 
         // ** This is potentially a condition that is only met if you don't have the EEPROM hardware **
         // If preferences have never been set before, numThrottlePots and throttleSubType

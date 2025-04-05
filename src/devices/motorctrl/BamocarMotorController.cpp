@@ -75,6 +75,15 @@ void BamocarMotorController::setup() {
     disable_sent = true;
     last_sent_value = 0;
     mappedMotorTorque = 0;
+
+
+    //FOR DEBUGGING - TESTING
+    //send message to get mains voltage update every 100ms.
+    var.buf[0] = 0x3D;
+    var.buf[1] = 0x06;
+    var.buf[2] = 0x64;
+    attachedCANBus->sendFrame(var);
+
 }
 
 
@@ -137,7 +146,7 @@ void BamocarMotorController::handleTick() {
         else if (last_sent_value != mappedMotorTorque) //0x31 for speed, 0x90 for torque
         {
             Logger::info("Here3");
-            var.buf[0] = 0x31;
+            var.buf[0] = 0x90;
             var.buf[1] = secondhalf; //secondhalf
             var.buf[2] = firsthalf; // first half
             attachedCANBus->sendFrame(var);
@@ -152,6 +161,13 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
     //                   frame.id, frame.len, 
     //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
     //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+    switch (frame.buf[0]) {
+        case 0x06: 
+            int voltage = frame.buf[2] * 256 + frame.buf[1];
+            Logger::console("Voltage reading : %d", voltage);
+            break;    
+
+        }
 }
 
 void BamocarMotorController::setGear(Gears gear) {

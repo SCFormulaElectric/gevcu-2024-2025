@@ -729,12 +729,12 @@ void CanHandler::detachAll(CanObserver *observer)
 void CanHandler::logFrame(const CAN_message_t &msg)
 {
     
-    if (Logger::isDebug()) {
-        Logger::debug("CAN: bus=%i id=%X dlc=%u ide=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-                      (int)canBusNode, msg.id, msg.len, msg.flags.extended,
-                      msg.buf[0], msg.buf[1], msg.buf[2], msg.buf[3],
-                      msg.buf[4], msg.buf[5], msg.buf[6], msg.buf[7]);
-    }
+    // if (Logger::isDebug()) {
+    //     Logger::debug("CAN: bus=%i id=%X dlc=%u ide=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+    //                   (int)canBusNode, msg.id, msg.len, msg.flags.extended,
+    //                   msg.buf[0], msg.buf[1], msg.buf[2], msg.buf[3],
+    //                   msg.buf[4], msg.buf[5], msg.buf[6], msg.buf[7]);
+    // }
 }
 
 void CanHandler::logFrame(const CANFD_message_t &msg_fd)
