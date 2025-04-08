@@ -81,6 +81,9 @@ public:
     void resetPulseCount();
     void calculateFlowRate();
 
+    int32_t normalizeInput(int32_t input, int32_t min, int32_t max);
+
+
 protected:
 
 private:
@@ -100,8 +103,8 @@ private:
     const int MAX_MOTOR_TEMP;
     const int MAX_MOTOR_CTRL_TEMP;
     int speed;
-    uint8_t motor_temp_percentage;
-    u_int8_t motor_ctrl_temp_percentage;
+    int16_t motor_temp_percentage;
+    int16_t motor_ctrl_temp_percentage;
 };
 
 #endif

@@ -123,26 +123,26 @@ void CoolingController::handleTick() {
     // double result = evaluateExpression(division);
     // Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
 
-    double max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
-    if(max_temp_percent >= 0.9){
+    int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    if(max_temp_percent >= 900){
          //duty cycle 90
          //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
     }
-    else if(max_temp_percent >= 0.8){
+    else if(max_temp_percent >= 800){
         //duty cycle 80
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
     }
-    else if(max_temp_percent>= 0.7){
+    else if(max_temp_percent>= 700){
         //duty cycle 70
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
     }
-    else if(max_temp_percent>= 0.6){
+    else if(max_temp_percent>= 600){
         //duty cycle 60
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
@@ -202,13 +202,20 @@ DeviceType CoolingController::getType()
 // }
 
 
+/*
+ * Map the constrained level linearly to a signed value from 0 to 1000.
+ */
+int32_t CoolingController::normalizeInput(int32_t input, int32_t min, int32_t max) {
+    return map(input, min, max, (int32_t) 0, (int32_t) 1000);
+}
+
 void CoolingController::handleCanFrame(const CAN_message_t &frame){
     u_int8_t payload = decode_hex(frame_buf[2], frame_buf[1]);
     switch(frame.buf[0]){
         case 0x49: //motor
-            motor_temp_percentage = payload/MAX_MOTOR_TEMP;
+            motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
         case 0x4a: //motor controller 
-            motor_ctrl_temp_percentage = payload/MAX_MOTOR_TEMP;
+            motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
         case 0x3D:
             speed = payload;
     }
@@ -241,8 +248,8 @@ void CoolingController::loadConfiguration() {
     // prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
     // prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
     // prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
-    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 9);
-    prefsHAndler->read("radiatorFanPin", &config->radiatorFanPin, 0);
+    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 0);
+    prefsHAndler->read("radiatorFanPin", &config->radiatorFanPin, 1);
     // prefsHandler->read("flowSensorPin", &config->flowSensorPin, 0);
 
 
