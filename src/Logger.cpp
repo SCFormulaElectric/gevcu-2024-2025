@@ -38,6 +38,7 @@ You will get a LOT of traffic on the serial console if you do this.
 
 extern bool sdCardPresent;
 FsFile logFile;
+FsFile recentLog;
 
 // For efficiency the log has to be preallocated for a certain amount of space.
 //going to try not to do this. We don't need super high throughput for logging
@@ -263,6 +264,15 @@ void Logger::console(const char *message, ...) {
     vsprintf(buff, message, args);
     Serial.println(buff);
     va_end(args);
+}
+
+void Logger::dumpLogFromSSD(){
+    recentLog = SD.sdfs.open(LOG_FILENAME ".txt", O_READ); // or O_RDWR if needed
+    if (recentLog) {
+        Serial.println("Most recent log file opened.");
+    } else {
+        Serial.println("Failed to open most recent log file.");
+    }
 }
 
 /*
