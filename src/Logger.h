@@ -57,7 +57,7 @@ public:
     static void dumpLogFromSSD();
 private:
     static uint32_t lastLogTime;
-
+    static char lastLogFile[100];
     static void log(DeviceId, LogLevel, const char *format, va_list);
     static String logMessage(const char *format, va_list args);
     static String printDeviceName(DeviceId);

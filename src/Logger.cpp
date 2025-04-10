@@ -54,6 +54,7 @@ FsFile recentLog;
 RingBuf<FsFile, RING_BUF_CAPACITY> rb;
 
 uint32_t Logger::lastLogTime = 0;
+char Logger::lastLogFile[100] = "";
 
 void Logger::initializeFile()
 {
@@ -74,6 +75,7 @@ void Logger::initializeFile()
     SD.sdfs.rename(fn2, fn1);
 
     logFile = SD.sdfs.open(fn2, O_RDWR | O_CREAT | O_TRUNC);
+    strcpy(lastLogFile, fn2);
     if (!logFile) {
         Serial.println("open failed\n");
         return;
@@ -267,12 +269,20 @@ void Logger::console(const char *message, ...) {
 }
 
 void Logger::dumpLogFromSSD(){
-    recentLog = SD.sdfs.open(LOG_FILENAME ".txt", O_READ); // or O_RDWR if needed
+    if (!sdCardPresent) return;
+    recentLog = SD.sdfs.open(lastLogFile, O_RDWR); // or O_RDWR if needed
     if (recentLog) {
         Serial.println("Most recent log file opened.");
     } else {
         Serial.println("Failed to open most recent log file.");
     }
+    char buffer[128];
+    int bytesRead;
+    while((bytesRead = recentLog.read(buffer, sizeof(buffer) -1)) > 0){
+        buffer[bytesRead] = '\0';
+        Serial.print(buffer);
+    }
+    recentLog.close();
 }
 
 /*
