@@ -157,17 +157,41 @@ void BamocarMotorController::handleTick() {
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
-    Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-                      frame.id, frame.len, 
-                      frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-                      frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
-    // switch (frame.buf[0]) {
-    //     case 0x06: 
-    //         int voltage = frame.buf[2] * 256 + frame.buf[1];
-    //         Logger::console("Voltage reading : %d", voltage);
-    //         break;    
+    // Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+    //                   frame.id, frame.len, 
+    //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+    //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
 
-    //     }
+    /*
+     var.buf[0] = 0x3D;
+    var.buf[1] = 0x30;
+    var.buf[2] = 0x64;
+    attachedCANBus->sendFrame(var);
+
+    //send message to get motor CONTROLLER temperature update every 100ms.
+    var.buf[0] = 0x3D;
+    var.buf[1] = 0x4a;
+    var.buf[2] = 0x64;
+    attachedCANBus->sendFrame(var);
+
+    //send message to get motor temperature update every 100ms.
+    var.buf[0] = 0x3D;
+    var.buf[1] = 0x49;
+    var.buf[2] = 0x64;*/
+    int payload = frame.buf[2] * 256 + frame.buf[1];
+    switch (frame.buf[0]) {
+        case 0x06: 
+            Logger::console("Voltage reading : %d", payload);
+            break;    
+        case 0x4a:
+            Logger::console("BAMOCAR temp : %d", payload);
+            break;
+        case 0x49:
+            Logger::console("motor temp : %d", payload);
+            break;
+        }
+        }
+
 }
 
 void BamocarMotorController::setGear(Gears gear) {
