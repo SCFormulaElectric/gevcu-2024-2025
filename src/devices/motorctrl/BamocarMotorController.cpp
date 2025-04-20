@@ -84,6 +84,7 @@ void BamocarMotorController::setup() {
     // var.buf[2] = 0x64;
     // attachedCANBus->sendFrame(var);
 
+
 }
 
 
@@ -184,15 +185,53 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
             Logger::console("Voltage reading : %d", payload);
             break;    
         case 0x4a:
-            Logger::console("BAMOCAR temp : %d", payload);
+        {
+            double temp = motorControllerToCelsius(payload);
+            Logger::console("BAMOCAR temp : %f", temp);
             break;
+        }
         case 0x49:
             Logger::console("motor temp : %d", payload);
             break;
         }
-        }
+        
 
 }
+
+
+
+// Integer lookup table for temperature decoding
+    static const struct {
+        int16_t tempC;
+        uint16_t value;
+    } tempLookup[] = {
+        { 125, 28480 }, { 120, 28179 }, { 115, 27851 }, { 110, 27497 },
+        { 105, 27114 }, { 100, 26702 }, {  95, 26261 }, {  90, 25792 },
+        {  85, 25296 }, {  80, 24775 }, {  75, 24232 }, {  70, 23671 },
+        {  65, 23097 }, {  60, 22515 }, {  55, 21933 }, {  50, 21357 },
+        {  45, 20793 }, {  40, 20250 }, {  35, 19733 }, {  30, 19247 },
+        {  25, 18797 }, {  20, 18387 }, {  15, 18017 }, {  10, 17688 },
+        {   5, 17400 }, {   0, 17151 }, {  -5, 16938 }, { -10, 16757 },
+        { -15, 16609 }, { -20, 16487 }, { -25, 16387 }, { -30, 16308 }
+    };
+
+double BamocarMotorController::motorControllerToCelsius(uint16_t reading) {
+    for (int i = 1; i < (int)(sizeof(tempLookup) / sizeof(tempLookup[0])); ++i) {
+        if (reading >= tempLookup[i].value) {
+            double t1 = tempLookup[i-1].tempC;
+            double t2 = tempLookup[i].tempC;
+            double v1 = tempLookup[i-1].value;
+            double v2 = tempLookup[i].value;
+
+            double ratio = (reading - v2) / (v1 - v2);
+            return t2 + ratio * (t1 - t2);
+        }
+    }
+    return (double)tempLookup[sizeof(tempLookup) / sizeof(tempLookup[0]) - 1].tempC;
+}
+    
+
+
 
 void BamocarMotorController::setGear(Gears gear) {
     selectedGear = gear;

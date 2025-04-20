@@ -82,7 +82,7 @@ public:
     virtual void saveConfiguration();
 
 private:
-
+    double motorControllerToCelsius(uint16_t reading);
     uint16_t torqueCommand;
     void timestamp();
     CAN_message_t var; // delete this when handleTick is fully functional
@@ -92,6 +92,7 @@ private:
     bool enable_sent;
     bool disable_sent;
     int last_sent_value;
+    
 };
 
 #endif /* DMOC_H_ */
