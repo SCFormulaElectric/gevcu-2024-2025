@@ -82,7 +82,8 @@ public:
     virtual void saveConfiguration();
 
 private:
-    double motorControllerToCelsius(uint16_t reading);
+    double motorControllerToCelsius(const uint16_t reading) const;
+    double motorToCelsius(const uint16_t reading) const;
     uint16_t torqueCommand;
     void timestamp();
     CAN_message_t var; // delete this when handleTick is fully functional
