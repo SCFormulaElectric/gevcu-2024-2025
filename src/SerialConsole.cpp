@@ -285,6 +285,8 @@ void SerialConsole::printMenu() {
     Logger::console("Most commands case sensitive\n");
     Logger::console("GENERAL SYSTEM CONFIGURATION\n");
     Logger::console("   h = help (displays this message)");
+    Logger::console("   LOGSDCARD=1 - Serial print the log file onto the monitor");
+    Logger::console("       if you would like it to save to a txt file, run the pytho script and close Serial monitor.")
     Logger::console("   DUMP=1 - Dump entire EEPROM to sdcard");
     Logger::console("   RESTORE=1 - Read eeprom backup from sdcard and flash it to EEPROM");
     Logger::console("   JSONDUMP=1 - Read config of every enabled device and store it in JSON format to sdcard");
@@ -464,7 +466,11 @@ void SerialConsole::handleConfigCmd() {
         if (newValue == 1) {
             loadEEPROMJSON();
         }
-    } else {
+    } else if (cmdString == String("LOGSDCARD")){
+        if (newValue == 1){
+            saveLog();
+        }
+    }else {
         //Logger::console("Unknown command");
         updateSetting(cmdString.c_str(), strVal);
         updateWifi = false;
@@ -550,6 +556,10 @@ void SerialConsole::handleShortCmd() {
         PrefHandler::initDevTable();
         break;
     }
+}
+
+void SerialConsole::saveLog(){
+    Logger::dumpLogFromSSD();
 }
 
 void SerialConsole::generateEEPROMBinary()
