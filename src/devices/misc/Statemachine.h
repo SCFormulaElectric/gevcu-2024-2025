@@ -50,7 +50,7 @@ private:
                               // NOTE: there needs to be a check in the dash 
                               //       that it'll only buzz once when recieved for the first time
                               //       any more messages after should be ignored
-    // int32_t brake1;           // this si probably need to change (ask tim)
+    // int32_t brake1;           // this is probably need to change (ask tim)
     // int32_t brake2;           // this is probably need to change (ask tim)
     int16_t brake; 
     bool tsms;                // this is circuit is connected
