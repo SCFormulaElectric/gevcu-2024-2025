@@ -47,9 +47,11 @@ private:
     int8_t dash_val_msg;      // set when we recieve the check from car
     CAN_message_t buzz_msg;   // the constructed msg to activate buzzer_msg 
     uint32_t counter_timer;   // control when to send another buzzer message
-                              // NOTE: there needs to be a check in the dash 
-                              //       that it'll only buzz once when recieved for the first time
-                              //       any more messages after should be ignored
+                              /* 
+                                NOTE: there needs to be a check in the dash 
+                                    that it'll only buzz once when recieved for the first time
+                                    any more messages after should be ignored
+                              */
     // int32_t brake1;           // this is probably need to change (ask tim)
     // int32_t brake2;           // this is probably need to change (ask tim)
     int16_t brake; 
