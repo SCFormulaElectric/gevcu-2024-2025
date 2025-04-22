@@ -175,3 +175,5 @@ I(1.132766) System Ready
 E(1.132797) [PotAccel] ERR_LOW_T1: throttle 1 value out of range: -214 
 
 I(X.XXXXXX) [BAMOCARINVERTER]: Motor Temp: XX.XXXXXXC
+
+I(X.XXXXXX) [BAMOCARINVERTER]: Motor Controller Temp: XX.XXXXXXC
