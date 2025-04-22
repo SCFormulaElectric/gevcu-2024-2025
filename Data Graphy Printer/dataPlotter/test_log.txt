@@ -137,7 +137,7 @@ I(5.5) Voltage reading : 426
 I(5.5) BAMOCAR temp : 97.2939
 I(5.5) motor temp : 74
 I(5.6) Voltage reading : 323
-I(5.6) BAMOCAR temp : 107.4295
+I(5.676867) BAMOCAR temp : 107.4295
 I(5.6) motor temp : 102
 I(5.7) Voltage reading : 323
 I(5.7) BAMOCAR temp : 96.024
@@ -148,3 +148,4 @@ I(5.8) motor temp : 92
 I(5.9) Voltage reading : 378
 I(5.9) BAMOCAR temp : 121.8671
 I(5.9) motor temp : 71
+I(10.112312312312) motor temp : 50
