@@ -9,7 +9,7 @@ void Statemachine::setup() {
 }
 
 Statemachine::Statemachine() {    
-  extern_curr_state = S0;
+  extern_curr_state = S2;
 }
 
 State Statemachine::getState() { return extern_curr_state; }

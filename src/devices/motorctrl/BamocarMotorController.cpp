@@ -85,7 +85,7 @@ void BamocarMotorController::handleTick() {
 
     if(extern_curr_state == S2)
     {
-        Logger::console("\n Bamocar: S2 loop");
+        //Logger::console("\n Bamocar: S2 loop");
         if (throttleAnalogValue < 50)
         {
             throttleAnalogValue = 0;
@@ -140,10 +140,10 @@ void BamocarMotorController::handleTick() {
         }
     }   
     else if(extern_curr_state == S1){
-        Logger::console("\n Bamocar: S1 loop");
+        //Logger::console("\n Bamocar: S1 loop");
     }
     else {
-        Logger::console("\n Bamocar: S0 loop");
+        //Logger::console("\n Bamocar: S0 loop");
     }
 }
 

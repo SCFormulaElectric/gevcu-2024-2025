@@ -112,21 +112,21 @@ void CoolingController::handleTick() {
     Device::handleTick(); // Call parent which controls the workflow
     Logger::avalanche("Cooling Controller Tick Handler");
 
+
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
 
     // Retrieve the temperature of the motor and the accumulator
-    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
+    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
     int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-    double convertedVoltage = (motorTemperatureAnalogReading * (5.0 / 3071.0));
-    if (motorTemperatureAnalogReading <= 0.000001){
-        Logger::info(COOLCONTROL, "convertedVolage is 0");
-    }
-    else{
-        double resistor2 = (10000 * convertedVoltage) / (5 - convertedVoltage);
-        //resistor 1 = 10K ohms
-        double result = 0.000000101908 * resistor2 * resistor2 - 0.0054716 * resistor2 + 70.266021;
-        Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
-    }
+    double convertedVoltage = (motorTemperatureAnalogReading / 818.0);
+    Logger::console("Voltage reading : %f", convertedVoltage);
+    double before_radiator_resistance = (10000 * convertedVoltage) / (5 - convertedVoltage);
+    Logger::console("resistance reading : %f", before_radiator_resistance);
+
+    double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
+    Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
+
+    ;
 
     // int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
     // if(max_temp_percent >= 900){
@@ -215,21 +215,53 @@ int32_t CoolingController::normalizeInput(int32_t input, int32_t min, int32_t ma
 }
 
 void CoolingController::handleCanFrame(const CAN_message_t &frame){
-    // u_int8_t payload = decode_hex(frame_buf[2], frame_buf[1]);
-    // switch(frame.buf[0]){
-    //     case 0x49: //motor
-    //         motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
-    //     case 0x4a: //motor controller 
-    //         motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
-    //     case 0x3D:
-    //         speed = payload;
-    // }
+    u_int8_t payload = decode_hex(frame.buf[2], frame.buf[1]);
+    switch(frame.buf[0]){
+        case 0x49: //motor
+            //motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
+        case 0x4a: //motor controller 
+            //motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
+        case 0x3D:
+            speed = payload;
+    }
 }
 
-// int CoolingController::decode_hex(const int64_t first_half, const int64_t second_half) const{
-//     //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
-//     return second_half * 256 + first_half;
-// }
+static const struct {
+    uint32_t r_value;
+    uint16_t temp;
+} 
+controllerTempLookup[] = {
+    {332776, -40}, // -40°C, 332776 Ω
+    {96481,  -20}, // -20°C,  96481 Ω
+    {32566,    0}, //   0°C,  32566 Ω
+    {12486,   20}, //  20°C,  12486 Ω
+    {10000,   25}, //  25°C,  10000 Ω
+    {5331,    40}, //  40°C,   5331 Ω
+    {2490,    60}, //  60°C,   2490 Ω
+    {1071,    85}, //  85°C,   1071 Ω
+    {678,    100}, // 100°C,  678.1 Ω (truncated)
+    {338,    120}  // 120°C,  338.2 ΩthermistorToCelsius (truncated)
+};
+
+double CoolingController::thermistorToCelsius(const double reading) const {
+    for (int i = 1; i < (int)(sizeof(controllerTempLookup) / sizeof(controllerTempLookup[0])); ++i) {
+        if (reading >= controllerTempLookup[i].r_value) {
+            double t1 = controllerTempLookup[i-1].temp;
+            double t2 = controllerTempLookup[i].temp;
+            double r1 = controllerTempLookup[i-1].r_value;
+            double r2 = controllerTempLookup[i].r_value;
+
+            double ratio = (reading - r2) / (r1 - r2);
+            return t2 + ratio * (t1 - t2);
+        }
+    }
+    return (double)controllerTempLookup[sizeof(controllerTempLookup) / sizeof(controllerTempLookup[0]) - 1].temp;
+}
+
+int CoolingController::decode_hex(const int64_t first_half, const int64_t second_half) const{
+    //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
+    return second_half * 256 + first_half;
+}
 
 /*
  * Load the device configuration.
@@ -248,8 +280,8 @@ void CoolingController::loadConfiguration() {
     Device::loadConfiguration(); // call parent
 
     //TODO Change pin number to pin for input
-    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 2); // ANALOG0 PIN
-    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 3); // ANALOG1 PIN
+    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 4); // ANALOG0 PIN TEMP BEFORE RADIATOR
+    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 5); // ANALOG1 TEMP AFTER RADIATOR
     // prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
     // prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
     // prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
@@ -283,7 +315,7 @@ void CoolingController::saveConfiguration() {
     // prefsHandler->write("fanMotorPin", config->fanMotorPin);
     //prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
     prefsHandler->write("waterMotorPin", config->waterMotorPin);
-    prefsHandler->write("radiatorFanPin", &config->radiatorFanPin);
+    prefsHandler->write("radiatorFanPin", config->radiatorFanPin); //removed 
     // prefsHandler->write("flowSensorPin", config->flowSensorPin);
 
 

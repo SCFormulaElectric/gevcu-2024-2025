@@ -80,6 +80,9 @@ public:
 
     void resetPulseCount();
     void calculateFlowRate();
+    double thermistorToCelsius(const double reading) const;
+
+    int decode_hex(const int64_t first_half, const int64_t second_half) const;
 
     int32_t normalizeInput(int32_t input, int32_t min, int32_t max);
 
