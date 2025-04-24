@@ -140,8 +140,8 @@ void StatemachineDevice::handleTick() {
   int brakeA = systemIO.getAnalogIn(6);     // read same pressure as B?
   int brakeB = systemIO.getAnalogIn(7);     // read same pressure as A?
 
-  tsms  = 1;                                // testing purposes
-  r2d   = 1;                                // testing purposes
+  //tsms  = 1;                                // testing purposes
+  //r2d   = 1;                                // testing purposes
 
   if (abs(brakeA - brakeB) < 300)                       // change the value above some threshold
   {
