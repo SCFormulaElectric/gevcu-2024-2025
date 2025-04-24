@@ -20,6 +20,8 @@ public:
     int decode_hex(const int64_t first_half, const int64_t second_half) const;
     DeviceId getId();
     DeviceType getType();
+    double motorToCelsius(const uint16_t reading) const;
+    double motorControllerToCelsius(const uint16_t reading) const;
 private:
     CAN_message_t var;
     int motor_temp;
