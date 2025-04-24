@@ -49,8 +49,8 @@ public:
     // uint8_t waterAccumulatorPin;
     uint8_t waterMotorPin;
     uint8_t radiatorFanPin;
-    // uint8_t accumulatorTemperatureSensorPin;
-    // uint8_t motorTemperatureSensorPin;
+    uint8_t accumulatorTemperatureSensorPin;
+    uint8_t motorTemperatureSensorPin;
     // uint8_t flowSensorPin;
 
     // float motorPumpOnTemperature;
@@ -65,7 +65,7 @@ public:
     // float accumulatorFanOffTemperature;
 };
 
-class CoolingController: public Device {
+class CoolingController: public Device, CanObserver {
 public:
     CoolingController();
     void setup();
@@ -100,8 +100,8 @@ private:
     // uint32_t tickInterval;
     // bool lastDigitalInputState; 
 
-    const int MAX_MOTOR_TEMP;
-    const int MAX_MOTOR_CTRL_TEMP;
+    // const int MAX_MOTOR_TEMP;
+    // const int MAX_MOTOR_CTRL_TEMP;
     int speed;
     int16_t motor_temp_percentage;
     int16_t motor_ctrl_temp_percentage;

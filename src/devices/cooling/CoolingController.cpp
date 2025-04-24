@@ -86,8 +86,8 @@ void CoolingController::setup() {
     // tickInterval = 1000;
     // lastDigitalInputState = false; 
 
-    MAX_MOTOR_TEMP = 45;
-    MAX_MOTOR_CTRL_TEMP = 70;
+    // MAX_MOTOR_TEMP = 45;
+    // MAX_MOTOR_CTRL_TEMP = 70;
     motor_temp_percentage = 0;
     motor_ctrl_temp_percentage = 0;
     speed = 0;
@@ -115,47 +115,52 @@ void CoolingController::handleTick() {
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
 
     // Retrieve the temperature of the motor and the accumulator
-    // int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
-    // int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-    
-    // double convertedVoltage = (motorTemperatureAnalogReading * (5.0 / 3071.0));
-    // double division = (500000 / convertedVoltage) - 100000;
-    // double result = evaluateExpression(division);
-    // Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
-
-    int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
-    if(max_temp_percent >= 900){
-         //duty cycle 90
-         //TODO- check pin input
-        systemIO.setDigitalOutput(config->waterMotorPin,true);
-        systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
-    }
-    else if(max_temp_percent >= 800){
-        //duty cycle 80
-        //TODO- check pin input
-        systemIO.setDigitalOutput(config->waterMotorPin,true);
-        systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
-    }
-    else if(max_temp_percent>= 700){
-        //duty cycle 70
-        //TODO- check pin input
-        systemIO.setDigitalOutput(config->waterMotorPin,true);
-        systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
-    }
-    else if(max_temp_percent>= 600){
-        //duty cycle 60
-        //TODO- check pin input
-        systemIO.setDigitalOutput(config->waterMotorPin,true);
-        systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
-    }
-
-    if (speed < 5)
-    {
-        systemIO.setDigitalOutput(config->radiatorFanPin, false)
+    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
+    int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    double convertedVoltage = (motorTemperatureAnalogReading * (5.0 / 3071.0));
+    if (motorTemperatureAnalogReading <= 0.000001){
+        Logger::info(COOLCONTROL, "convertedVolage is 0");
     }
     else{
-        systemIO.setDigitalOutput(config->radiatorFanPin, true)
+        double resistor2 = (10000 * convertedVoltage) / (5 - convertedVoltage);
+        //resistor 1 = 10K ohms
+        double result = 0.000000101908 * resistor2 * resistor2 - 0.0054716 * resistor2 + 70.266021;
+        Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", result);
     }
+
+    // int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    // if(max_temp_percent >= 900){
+    //      //duty cycle 90
+    //      //TODO- check pin input
+    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
+    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
+    // }
+    // else if(max_temp_percent >= 800){
+    //     //duty cycle 80
+    //     //TODO- check pin input
+    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
+    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
+    // }
+    // else if(max_temp_percent>= 700){
+    //     //duty cycle 70
+    //     //TODO- check pin input
+    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
+    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
+    // }
+    // else if(max_temp_percent>= 600){
+    //     //duty cycle 60
+    //     //TODO- check pin input
+    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
+    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
+    // }
+
+    // if (speed < 5)
+    // {
+    //     systemIO.setDigitalOutput(config->radiatorFanPin, false)
+    // }
+    // else{
+    //     systemIO.setDigitalOutput(config->radiatorFanPin, true)
+    // }
     //  bool currentDigitalInputState = (bool) systemIO.getDigitalIn(config->flowSensorPin);
     // if (lastDigitalInputState == true && currentDigitalInputState == false) {
     //     // Falling edge detected (HIGH to LOW transition)
@@ -210,21 +215,21 @@ int32_t CoolingController::normalizeInput(int32_t input, int32_t min, int32_t ma
 }
 
 void CoolingController::handleCanFrame(const CAN_message_t &frame){
-    u_int8_t payload = decode_hex(frame_buf[2], frame_buf[1]);
-    switch(frame.buf[0]){
-        case 0x49: //motor
-            motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
-        case 0x4a: //motor controller 
-            motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
-        case 0x3D:
-            speed = payload;
-    }
+    // u_int8_t payload = decode_hex(frame_buf[2], frame_buf[1]);
+    // switch(frame.buf[0]){
+    //     case 0x49: //motor
+    //         motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
+    //     case 0x4a: //motor controller 
+    //         motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
+    //     case 0x3D:
+    //         speed = payload;
+    // }
 }
 
-int CoolingController::decode_hex(const int64_t first_half, const int64_t second_half) const{
-    //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
-    return second_half * 256 + first_half;
-}
+// int CoolingController::decode_hex(const int64_t first_half, const int64_t second_half) const{
+//     //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
+//     return second_half * 256 + first_half;
+// }
 
 /*
  * Load the device configuration.
@@ -243,13 +248,13 @@ void CoolingController::loadConfiguration() {
     Device::loadConfiguration(); // call parent
 
     //TODO Change pin number to pin for input
-    // prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 0); // ANALOG0 PIN
-    // prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 1); // ANALOG1 PIN
+    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 2); // ANALOG0 PIN
+    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 3); // ANALOG1 PIN
     // prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
     // prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
     // prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
     prefsHandler->read("waterMotorPin", &config->waterMotorPin, 0);
-    prefsHAndler->read("radiatorFanPin", &config->radiatorFanPin, 1);
+    prefsHandler->read("radiatorFanPin", &config->radiatorFanPin, 1);
     // prefsHandler->read("flowSensorPin", &config->flowSensorPin, 0);
 
 
@@ -272,13 +277,13 @@ void CoolingController::saveConfiguration() {
     Device::saveConfiguration(); // call parent
 
     //TODO Change pin number to pin for input
-    // prefsHandler->write("motorTempeartureSensorPin", config->motorTemperatureSensorPin);
-    // prefsHandler->write("accumulatorTempeartureSensorPin", config->accumulatorTemperatureSensorPin);
+    prefsHandler->write("motorTempeartureSensorPin", config->motorTemperatureSensorPin);
+    prefsHandler->write("accumulatorTempeartureSensorPin", config->accumulatorTemperatureSensorPin);
     // prefsHandler->write("fanAccumulatorPin", config->fanAccumulatorPin);
     // prefsHandler->write("fanMotorPin", config->fanMotorPin);
     //prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
     prefsHandler->write("waterMotorPin", config->waterMotorPin);
-    prefsHAndler->write("radiatorFanPin", &config->radiatorFanPin);
+    prefsHandler->write("radiatorFanPin", &config->radiatorFanPin);
     // prefsHandler->write("flowSensorPin", config->flowSensorPin);
 
 
