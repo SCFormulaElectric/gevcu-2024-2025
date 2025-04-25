@@ -8,7 +8,7 @@
 
 
 #define DashboardID 0x521
-#define DashboardTickInt 1000000
+#define DashboardTickInt 500000
 
 class DashboardDevice: public Device, CanObserver{
 public:
