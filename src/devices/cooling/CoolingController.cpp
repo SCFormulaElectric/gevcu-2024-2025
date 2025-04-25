@@ -116,15 +116,25 @@ void CoolingController::handleTick() {
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
 
     // Retrieve the temperature of the motor and the accumulator
-    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-    int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
+    Logger::console("Print real Analogreading : %d", motorTemperatureAnalogReading);
+    //int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
     double convertedVoltage = (motorTemperatureAnalogReading / 818.0);
     Logger::console("Voltage reading : %f", convertedVoltage);
-    double before_radiator_resistance = (10000 * convertedVoltage) / (5 - convertedVoltage);
+    double before_radiator_resistance = (14666 * convertedVoltage) / (5 - convertedVoltage);
     Logger::console("resistance reading : %f", before_radiator_resistance);
 
     double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
     Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
+
+    int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    double convertedVoltageAfter = (accumulatorTemperatureAnalogReading / 818.0);
+    Logger::console("Voltage reading : %f", convertedVoltageAfter);
+    double after_radiator_resistance = (14666 * convertedVoltageAfter) / (5 - convertedVoltageAfter);
+    Logger::console("resistance reading : %f", after_radiator_resistance);
+    double temp_after_Radiator = thermistorToCelsius(after_radiator_resistance);
+    Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
+
 
     ;
 
@@ -227,8 +237,8 @@ void CoolingController::handleCanFrame(const CAN_message_t &frame){
 }
 
 static const struct {
-    uint32_t r_value;
-    uint16_t temp;
+    double r_value;
+    double temp;
 } 
 controllerTempLookup[] = {
     {332776, -40}, // -40°C, 332776 Ω
