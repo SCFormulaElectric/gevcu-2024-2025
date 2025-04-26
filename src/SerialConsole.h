@@ -77,6 +77,7 @@ private:
     void printConfigEntry(const Device *dev, const ConfigEntry &entry);
     void getConfigEntriesForDevice(Device *dev);
     void updateSetting(const char *settingName, char *valu);
+    void saveLog();
     void generateEEPROMBinary();
     void loadEEPROMBinary();
     void generateEEPROMJSON();
@@ -84,5 +85,3 @@ private:
 };
 
 #endif /* SERIALCONSOLE_H_ */
-
-

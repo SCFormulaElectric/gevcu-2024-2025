@@ -24,44 +24,43 @@
 
  */
 
-#ifndef LOGGER_H_
-#define LOGGER_H_
-
-#include <Arduino.h>
-#include "config.h"
-#include "devices/DeviceTypes.h"
-#include "constants.h"
-
-class Logger {
-public:
-    enum LogLevel {
-        Avalanche = -1, Debug = 0, Info = 1, Warn = 2, Error = 3, Off = 4
-    };
-    static void avalanche(const char *, ...);
-    static void avalanche(DeviceId, const char *, ...);
-    static void debug(const char *, ...);
-    static void debug(DeviceId, const char *, ...);
-    static void info(const char *, ...);
-    static void info(DeviceId, const char *, ...);
-    static void warn(const char *, ...);
-    static void warn(DeviceId, const char *, ...);
-    static void error(const char *, ...);
-    static void error(DeviceId, const char *, ...);
-    static void console(const char *, ...);
-    static void setLoglevel(LogLevel);
-    static LogLevel getLogLevel();
-    static uint32_t getLastLogTime();
-    static boolean isDebug();
-    static void initializeFile();
-    static void loop();
-private:
-    static uint32_t lastLogTime;
-
-    static void log(DeviceId, LogLevel, const char *format, va_list);
-    static String logMessage(const char *format, va_list args);
-    static String printDeviceName(DeviceId);
-};
-
-#endif /* LOGGER_H_ */
-
-
+ #ifndef LOGGER_H_
+ #define LOGGER_H_
+ 
+ #include <Arduino.h>
+ #include "config.h"
+ #include "devices/DeviceTypes.h"
+ #include "constants.h"
+ 
+ class Logger {
+ public:
+     enum LogLevel {
+         Avalanche = -1, Debug = 0, Info = 1, Warn = 2, Error = 3, Off = 4
+     };
+     static void avalanche(const char *, ...);
+     static void avalanche(DeviceId, const char *, ...);
+     static void debug(const char *, ...);
+     static void debug(DeviceId, const char *, ...);
+     static void info(const char *, ...);
+     static void info(DeviceId, const char *, ...);
+     static void warn(const char *, ...);
+     static void warn(DeviceId, const char *, ...);
+     static void error(const char *, ...);
+     static void error(DeviceId, const char *, ...);
+     static void console(const char *, ...);
+     static void setLoglevel(LogLevel);
+     static LogLevel getLogLevel();
+     static uint32_t getLastLogTime();
+     static boolean isDebug();
+     static void initializeFile();
+     static void loop();
+     static void dumpLogFromSSD();
+ private:
+     static uint32_t lastLogTime;
+     static char lastLogFile[100];
+     static void log(DeviceId, LogLevel, const char *format, va_list);
+     static String logMessage(const char *format, va_list args);
+     static String printDeviceName(DeviceId);
+ };
+ 
+ #endif /* LOGGER_H_ */
