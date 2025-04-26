@@ -35,45 +35,63 @@ with open(log_file, "r") as f:
             mt_time.append(t)
             mt_values_raw.append(value)
         elif "Temperature before Radiator :" in line:
-            value = int(re.search(r"Temperature before Radiator\s*:\s*(\d+)", line).group(1))
-            therm_before_rad_time.append(t)
-            therm_before_rad_raw.append(value)
+            match = re.search(r"Temperature before Radiator\s*:\s*([\d\.]+)", line)
+            if match:
+                value = float(match.group(1))
+                therm_before_rad_time.append(t)
+                therm_before_rad_raw.append(value)
         elif "Temperature after Radiator :" in line:
-            value = int(re.search(r"Temperature after Radiator\s*:\s*(\d+)", line).group(1))
-            therm_after_rad_time.append(t)
-            therm_after_rad_raw.append(value)
+            match = re.search(r"Temperature after Radiator\s*:\s*([\d\.]+)", line)
+            if match:
+                value = float(match.group(1))
+                therm_after_rad_time.append(t)
+                therm_after_rad_raw.append(value)
 
 
 # CSV export (EMA only)
 def write_csv(filename="parsed_output.csv"):
     data_dict = defaultdict(dict)
+
     for t, v in zip(mt_time, mt_values_raw):
         if v is not None:
-            data_dict[t]["motor"] = v
+            rounded_t = round(t, 1)
+            data_dict[rounded_t]["motor"] = v
+
     for t, v in zip(bamo_time, bamo_values_raw):
         if v is not None:
-            data_dict[t]["mtrctrl"] = v
+            rounded_t = round(t, 1)
+            data_dict[rounded_t]["mtrctrl"] = v
+
     for t, v in zip(volt_time, volt_values):
         if v is not None:
-            data_dict[t]["Volt"] = v
+            rounded_t = round(t, 1)
+            data_dict[rounded_t]["Volt"] = v
+
     for t, v in zip(therm_before_rad_time, therm_before_rad_raw):
         if v is not None:
-            data_dict[t]["Therm_Before_Rad"] = v
+            rounded_t = round(t, 1)
+            data_dict[rounded_t]["Therm_Before_Rad"] = v
+
     for t, v in zip(therm_after_rad_time, therm_after_rad_raw):
         if v is not None:
-            data_dict[t]["Therm_After_Rad"] = v
+            rounded_t = round(t, 1)
+            data_dict[rounded_t]["Therm_After_Rad"] = v
 
     all_times = sorted(data_dict.keys())
+
     with open(filename, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Time", "motor", "mtrctrl", "Volt", "Therm_Before_Rad", "Therm_After_Rad"])
         for t in all_times:
-            motor = data_dict[t].get("motor", "")
-            mtrctrl = data_dict[t].get("mtrctrl", "")
-            volt = data_dict[t].get("Volt", "")
-            therm_before_rad = data_dict[t].get("Therm_Before_Rad", "")
-            therm_after_rad = data_dict[t].get("Therm_After_Rad", "")
-            writer.writerow([t, motor, mtrctrl, volt, therm_before_rad, therm_after_rad])
+            row = data_dict[t]
+            writer.writerow([
+                t,
+                row.get("motor", ""),
+                row.get("mtrctrl", ""),
+                row.get("Volt", ""),
+                row.get("Therm_Before_Rad", ""),
+                row.get("Therm_After_Rad", "")
+            ])
 
 write_csv()
 

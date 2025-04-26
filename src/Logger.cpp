@@ -270,6 +270,7 @@ void Logger::console(const char *message, ...) {
 
 void Logger::dumpLogFromSSD(){
     if (!sdCardPresent) return;
+    Serial.print("hi");
     recentLog = SD.sdfs.open(lastLogFile, O_RDWR); // or O_RDWR if needed
     if (recentLog) {
         Serial.println("Most recent log file opened.");

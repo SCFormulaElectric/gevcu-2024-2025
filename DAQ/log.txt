@@ -1,0 +1,130 @@
+hiMost recent log file opened.
+I(1.066582) TWI init ok
+I(1.066590) add MemCache (id: 7300, 20203D98)
+D(1.066607) attached TickObserver (20203D98) as number 0 to timer 0, 40000us interval
+~(1.066624) ReadPage
+D(1.090086) Device ID: 7100 was found in device table at entry: 3
+~(1.211002) Found a device record to edit
+~(1.211011) ID to write: F100
+I(1.211019) add device: System (id: 7100, 2002438C)
+D(1.211030) loading configuration in system
+D(1.234655) ADC:0 GAIN: 1024 Offset: 0
+D(1.234665) ADC:1 GAIN: 1024 Offset: 0
+D(1.234675) ADC:2 GAIN: 1024 Offset: 0
+D(1.234685) ADC:3 GAIN: 1024 Offset: 0
+D(1.234695) ADC:4 GAIN: 1024 Offset: 0
+D(1.234705) ADC:5 GAIN: 1024 Offset: 0
+D(1.234715) ADC:6 GAIN: 1024 Offset: 0
+D(1.234725) ADC:7 GAIN: 1024 Offset: 0
+D(1.235956) attached TickObserver (200243AC) as number 0 to timer 1, 1000us interval
+I(1.236014) CAN0 init ok. Speed = 500000
+I(1.236067) CAN1 init ok. Speed = 500000
+I(1.241455) CAN2 FD init ok. Speed = 500000 / 2000000
+I(1.241466) SYSIO init ok
+I(1.241475) Adding tick handler for Device Manager
+D(1.241484) attached TickObserver (2001F4BC) as number 0 to timer 4, 100000us interval
+I(1.241499) add: Heartbeat (id: 7200, 2020CE30)
+D(1.241510) attached TickObserver (2020CE30) as number 0 to timer 5, 2000000us interval
+I(1.241526) Initializing Fault Handler
+D(1.241535) Sending msg to device with ID 2000 (ThinkBMS)
+D(1.241546) Device ID: 2000 was found in device table at entry: 4
+D(1.241557) Sending msg to device with ID 1071 (TCCHCHGR)
+D(1.241569) Device ID: 1071 was found in device table at entry: 5
+D(1.241581) Sending msg to device with ID 3210 (CoolingController)
+D(1.241595) Device ID: 3210 was found in device table at entry: 36
+D(1.241607) Sending msg to device with ID 1050 (DelphiDCDC)
+D(1.241618) Device ID: 1050 was found in device table at entry: 6
+D(1.241630) Sending msg to device with ID 1051 (OvarDCDC)
+D(1.241641) Device ID: 1051 was found in device table at entry: 7
+D(1.241652) Sending msg to device with ID 4400 (EVIC)
+D(1.241663) Device ID: 4400 was found in device table at entry: 8
+D(1.241674) Sending msg to device with ID 800 (ESP32)
+D(1.241685) Device ID: 800 was found in device table at entry: 10
+D(1.241696) Sending msg to device with ID 4212 (TSLAGEN2AC)
+D(1.241709) Device ID: 4212 was found in device table at entry: 28
+D(1.241721) Sending msg to device with ID 1099 (PotBrake)
+D(1.241734) Device ID: 1099 was found in device table at entry: 37
+D(1.241746) Sending msg to device with ID 1031 (PotAccel)
+D(1.241756) Device ID: 1031 was found in device table at entry: 2
+D(1.241767) Sending msg to device with ID 1234 (CAN)
+D(1.241780) Device ID: 1234 was found in device table at entry: 32
+D(1.241792) Sending msg to device with ID 521 (Dash)
+D(1.241805) Device ID: 521 was found in device table at entry: 35
+D(1.241816) Sending msg to device with ID 3200 (HeatCool)
+D(1.241828) Device ID: 3200 was found in device table at entry: 17
+D(1.241839) Sending msg to device with ID 3300 (LightCtrl)
+D(1.241851) Device ID: 3300 was found in device table at entry: 18
+D(1.241862) Sending msg to device with ID 3100 (Precharge)
+D(1.241875) Device ID: 3100 was found in device table at entry: 19
+D(1.241886) Sending msg to device with ID 103 (SM)
+D(1.241901) Device ID: 103 was found in device table at entry: 53
+D(1.241912) Sending msg to device with ID 7100 (SYS)
+D(1.241922) Sending msg to device with ID 3000 (Vehicle)
+D(1.241934) Device ID: 3000 was found in device table at entry: 20
+D(1.241945) Sending msg to device with ID 1010 (BamocarInverter)
+D(1.241959) Device ID: 1010 was found in device table at entry: 34
+D(1.241970) Sending msg to device with ID 1000 (DMOC645)
+D(1.241981) Device ID: 1000 was found in device table at entry: 1
+D(1.241993) Sending msg to device with ID 7100 (SYS)
+D(1.242003) Sending msg to device with ID 7100 (SYS)
+D(1.242014) Sending msg to device with ID 1010 (BamocarInverter)
+I(1.242025) add device: Bamocar Inverter (id:1010, 2001EE2C)
+I(1.242035) Valid checksum, using stored config values
+I(1.335886) MaxTorque: 300.0 MaxRPM: 6000
+D(1.335958) attached CanObserver (2001EE9C) for id=100, mask=0
+D(1.335970) attached TickObserver (2001EE2C) as number 1 to timer 0, 40000us interval
+D(1.335988) Sending msg to device with ID 1010 (BamocarInverter)
+I(1.336439) System Ready
+D(19.204239) attached CanObserver (2001F3CC) for id=200, mask=7F0
+I(19.204250) add device: CoolingController (id: 3210, 2001F3AC)
+D(19.204262) loading configuration in CoolingController
+D(19.298107) attached TickObserver (2001F3AC) as number 0 to timer 6, 200000us interval
+I(19.498129) Temperature before Radiator : 22.495999
+I(19.498150) Temperature after Radiator : 22.178923
+I(19.698132) Temperature before Radiator : 22.518501
+I(19.698154) Temperature after Radiator : 22.156126
+I(19.898132) Temperature before Radiator : 22.495999
+I(19.898153) Temperature after Radiator : 22.337942
+I(20.098131) Temperature before Radiator : 22.495999
+I(20.098154) Temperature after Radiator : 22.224455
+I(20.298134) Temperature before Radiator : 22.495999
+I(20.298157) Temperature after Radiator : 22.337942
+I(20.498135) Temperature before Radiator : 22.495999
+I(20.498156) Temperature after Radiator : 22.269909
+I(20.698132) Temperature before Radiator : 22.473478
+I(20.698156) Temperature after Radiator : 22.292606
+I(20.898132) Temperature before Radiator : 22.495999
+I(20.898153) Temperature after Radiator : 22.156126
+I(21.098133) Temperature before Radiator : 22.473478
+I(21.098156) Temperature after Radiator : 22.269909
+I(21.298134) Temperature before Radiator : 22.518501
+I(21.298157) Temperature after Radiator : 22.178923
+I(21.498133) Temperature before Radiator : 22.473478
+I(21.498154) Temperature after Radiator : 22.156126
+I(21.698133) Temperature before Radiator : 22.495999
+I(21.698156) Temperature after Radiator : 22.064744
+I(21.898134) Temperature before Radiator : 22.495999
+I(21.898155) Temperature after Radiator : 22.156126
+I(22.098131) Temperature before Radiator : 22.360580
+I(22.098154) Temperature after Radiator : 22.224455
+I(22.298132) Temperature before Radiator : 22.473478
+I(22.298157) Temperature after Radiator : 22.156126
+I(22.498135) Temperature before Radiator : 22.473478
+I(22.498156) Temperature after Radiator : 22.247192
+I(22.698133) Temperature before Radiator : 22.473478
+I(22.698156) Temperature after Radiator : 22.178923
+I(22.898132) Temperature before Radiator : 22.495999
+I(22.898153) Temperature after Radiator : 22.360580
+I(23.098133) Temperature before Radiator : 22.473478
+I(23.098156) Temperature after Radiator : 22.224455
+I(23.298132) Temperature before Radiator : 22.495999
+I(23.298157) Temperature after Radiator : 22.337942
+I(23.498133) Temperature before Radiator : 22.540983
+I(23.498156) Temperature after Radiator : 22.292606
+I(23.698133) Temperature before Radiator : 22.540983
+I(23.698156) Temperature after Radiator : 22.110475
+I(23.898132) Temperature before Radiator : 22.518501
+I(23.898153) Temperature after Radiator : 22.224455
+I(24.098133) Temperature before Radiator : 22.540983
+I(24.098156) Temperature after Radiator : 22.224455
+D(24.215263) removing TickObserver (2001F3AC) as number 0 from timer 6
