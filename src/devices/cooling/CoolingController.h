@@ -25,63 +25,90 @@
 
  */
 
-#ifndef HEATCOOL_H_
-#define HEATCOOL_H_
-
-#include <Arduino.h>
-#include "../../config.h"
-#include "../../sys_io.h"
-#include "../../TickHandler.h"
-#include "../../Logger.h"
-#include "../../DeviceManager.h"
-#include "../../FaultHandler.h"
-#include "../../FaultCodes.h"
-
-#define COOLCONTROL 0x3210
-#define CFG_TICK_INTERVAL_COOLCONTROL     200000
-
-
-class CoolingControllerConfiguration: public DeviceConfiguration {
-public:
-    //I/O pins
-    uint8_t fanAccumulatorPin;
-    uint8_t fanMotorPin;
-    uint8_t waterAccumulatorPin;
-    uint8_t waterMotorPin;
-    uint8_t accumulatorTemperatureSensorPin;
-    uint8_t motorTemperatureSensorPin;
-
-    float motorPumpOnTemperature;
-    float motorPumpOffTempearture;
-    float accumulatorPumpOnTemperature;
-    float accumulatorPumpOffTemperature;
-
-
-    float motorFanOnTemperature;
-    float motorFanOffTemperature;
-    float accumulatorFanOnTemperature;
-    float accumulatorFanOffTemperature;
-};
-
-class CoolingController: public Device {
-public:
-    CoolingController();
-    void setup();
-    void earlyInit();
-    void handleTick();
-    DeviceId getId();
-    DeviceType getType();
-
-    void loadConfiguration();
-    void saveConfiguration();
-
-protected:
-
-private:
-    bool isAccumulatorPumpOn;
-    bool isMotorPumpOn;
-    bool isAccumulatorFanOn;
-    bool isMotorFanOn;
-};
-
-#endif
+ #ifndef HEATCOOL_H_
+ #define HEATCOOL_H_
+ 
+ #include <Arduino.h>
+ #include "../../config.h"
+ #include "../../sys_io.h"
+ #include "../../TickHandler.h"
+ #include "../../Logger.h"
+ #include "../../DeviceManager.h"
+ #include "../../FaultHandler.h"
+ #include "../../FaultCodes.h"
+ 
+ #define COOLCONTROL 0x3210
+ #define CFG_TICK_INTERVAL_COOLCONTROL     200000
+ 
+ 
+ class CoolingControllerConfiguration: public DeviceConfiguration {
+ public:
+     //I/O pins
+     // uint8_t fanAccumulatorPin;
+     // uint8_t fanMotorPin;
+     // uint8_t waterAccumulatorPin;
+     uint8_t waterMotorPin;
+     uint8_t radiatorFanPin;
+     uint8_t accumulatorTemperatureSensorPin;
+     uint8_t motorTemperatureSensorPin;
+     // uint8_t flowSensorPin;
+ 
+     // float motorPumpOnTemperature;
+     // float motorPumpOffTempearture;
+     // float accumulatorPumpOnTemperature;
+     // float accumulatorPumpOffTemperature;
+ 
+ 
+     // float motorFanOnTemperature;
+     // float motorFanOffTemperature;
+     // float accumulatorFanOnTemperature;
+     // float accumulatorFanOffTemperature;
+ };
+ 
+ class CoolingController: public Device, CanObserver {
+ public:
+     CoolingController();
+     void setup();
+     void earlyInit();
+     void handleTick();
+     DeviceId getId();
+     DeviceType getType();
+ 
+     void loadConfiguration();
+     void saveConfiguration();
+     void handleCanFrame(const CAN_message_t &frame);
+ 
+     void resetPulseCount();
+     void calculateFlowRate();
+     double thermistorToCelsius(const double reading) const;
+ 
+     int decode_hex(const int64_t first_half, const int64_t second_half) const;
+ 
+     int32_t normalizeInput(int32_t input, int32_t min, int32_t max);
+ 
+ 
+ protected:
+ 
+ private:
+     // bool isAccumulatorPumpOn;
+     // bool isMotorPumpOn;
+     // bool isAccumulatorFanOn;
+     // bool isMotorFanOn;
+ 
+     // int  pulseCount;
+     // uint32_t lastTickTime;
+     // float flowRate;
+     // int threshold; 
+     // float calibrationFactor;
+     // uint32_t tickInterval;
+     // bool lastDigitalInputState; 
+ 
+     // const int MAX_MOTOR_TEMP;
+     // const int MAX_MOTOR_CTRL_TEMP;
+     int speed;
+     int16_t motor_temp_percentage;
+     int16_t motor_ctrl_temp_percentage;
+ };
+ 
+ #endif
+ 
