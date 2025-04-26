@@ -191,7 +191,9 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
             break;
         }
         case 0x49:
-            Logger::console("motor temp : %d", payload);
+        {
+            double temp = motorToCelsius(payload);
+            Logger::console("motor temp : %f", temp);
             break;
         }
         
