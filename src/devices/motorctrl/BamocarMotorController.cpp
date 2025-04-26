@@ -199,6 +199,7 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
         
 
 }
+}
 static const struct {
     int32_t value;  
     int16_t tempC; 
