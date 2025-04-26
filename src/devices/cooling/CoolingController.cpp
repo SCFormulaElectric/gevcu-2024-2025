@@ -136,8 +136,8 @@ void CoolingController::handleTick() {
     Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
 
 
-    systemIO.setDigitalOutput(config->waterMotorPin,false);
-    systemIO.setDigitalOutput(config->radiatorFanPin,false);
+    // systemIO.setDigitalOutput(config->waterMotorPin,false);
+    // systemIO.setDigitalOutput(config->radiatorFanPin,false);
     
 
     // int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
