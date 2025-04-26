@@ -11,9 +11,9 @@ MIN_WINDOW = 10
 volt_time, volt_values = [], []
 bamo_time, bamo_values_raw = [], []
 mt_time, mt_values_raw = [], []
-
+log_file = input("Enter log file name (e.g., test_log.txt): ")
 # Read log and collect raw values
-with open("test_log.txt", "r") as f:
+with open(log_file, "r") as f:
     for line in f:
         time_match = re.search(r'I\(([\d\.]+)\)', line)
         if not time_match:
