@@ -23,3 +23,5 @@ If you want to run multiple tests, flash the VCU again with the same code by run
 ## MAKE SURE U R RENAMING THE files "log.txt" to something else after you run each test so that the program does not overwrite to the same file and the data is lost
 ## Worst comes to worst, take the SD CARD out of the VCU and use the SD card adapter from the blue box and read the txt file manually. 
 
+TO TURN ON THE PUMP GO INTO THE SERIAL CONSOLE OF THE ARDUINO IDE AND WRITE "J"
+TO TURN IT OFF WRITE "K"
