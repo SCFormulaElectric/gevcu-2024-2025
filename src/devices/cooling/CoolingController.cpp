@@ -117,23 +117,23 @@
  
      // Retrieve the temperature of the motor and the accumulator
      int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
-     Logger::console("Print real Analogreading : %d", motorTemperatureAnalogReading);
+    //  Logger::console("Print real Analogreading : %d", motorTemperatureAnalogReading);
      //int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
      double convertedVoltage = (motorTemperatureAnalogReading / 818.0);
-     Logger::console("Voltage reading : %f", convertedVoltage);
+    //  Logger::console("Voltage reading : %f", convertedVoltage);
      double before_radiator_resistance = (14666 * convertedVoltage) / (5 - convertedVoltage);
-     Logger::console("resistance reading : %f", before_radiator_resistance);
+    //  Logger::console("resistance reading : %f", before_radiator_resistance);
  
      double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
-     Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
+     Logger::info("Temperature before Radiator : %f", temp_before_Radiator);
  
      int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
      double convertedVoltageAfter = (accumulatorTemperatureAnalogReading / 818.0);
-     Logger::console("Voltage reading : %f", convertedVoltageAfter);
+    //  Logger::console("Voltage reading : %f", convertedVoltageAfter);
      double after_radiator_resistance = (14666 * convertedVoltageAfter) / (5 - convertedVoltageAfter);
-     Logger::console("resistance reading : %f", after_radiator_resistance);
+    //  Logger::console("resistance reading : %f", after_radiator_resistance);
      double temp_after_Radiator = thermistorToCelsius(after_radiator_resistance);
-     Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
+     Logger::info("Temperature after Radiator : %f", temp_after_Radiator);
  
  
      systemIO.setDigitalOutput(config->waterMotorPin,false);

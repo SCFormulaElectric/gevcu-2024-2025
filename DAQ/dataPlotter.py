@@ -11,6 +11,8 @@ MIN_WINDOW = 10
 volt_time, volt_values = [], []
 bamo_time, bamo_values_raw = [], []
 mt_time, mt_values_raw = [], []
+therm_before_rad_time, therm_before_rad_raw = [], []
+therm_after_rad_time, therm_after_rad_raw = [], []
 log_file = input("Enter log file name (e.g., test_log.txt): ")
 # Read log and collect raw values
 with open(log_file, "r") as f:
@@ -32,47 +34,46 @@ with open(log_file, "r") as f:
             value = int(re.search(r"motor temp\s*:\s*(\d+)", line).group(1))
             mt_time.append(t)
             mt_values_raw.append(value)
+        elif "Temperature before Radiator :" in line:
+            value = int(re.search(r"Temperature before Radiator\s*:\s*(\d+)", line).group(1))
+            therm_before_rad_time.append(t)
+            therm_before_rad_raw.append(value)
+        elif "Temperature after Radiator :" in line:
+            value = int(re.search(r"Temperature after Radiator\s*:\s*(\d+)", line).group(1))
+            therm_after_rad_time.append(t)
+            therm_after_rad_raw.append(value)
 
-# EMA function
-def apply_ema(times, values):
-    smoothed = []
-    ema = None
-    for i in range(len(values)):
-        if i < MIN_WINDOW:
-            smoothed.append(None)
-            continue
-        if ema is None:
-            ema = sum(values[i - MIN_WINDOW:i]) / MIN_WINDOW
-        else:
-            ema = ALPHA * values[i] + (1 - ALPHA) * ema
-        smoothed.append(ema)
-    return smoothed
-
-# Apply EMA
-mt_values_ema = apply_ema(mt_time, mt_values_raw)
-bamo_values_ema = apply_ema(bamo_time, bamo_values_raw)
 
 # CSV export (EMA only)
 def write_csv(filename="parsed_output.csv"):
     data_dict = defaultdict(dict)
-    for t, v in zip(mt_time, mt_values_ema):
+    for t, v in zip(mt_time, mt_values_raw):
         if v is not None:
-            data_dict[t]["MT"] = v
-    for t, v in zip(bamo_time, bamo_values_ema):
+            data_dict[t]["motor"] = v
+    for t, v in zip(bamo_time, bamo_values_raw):
         if v is not None:
-            data_dict[t]["MCT"] = v
+            data_dict[t]["mtrctrl"] = v
     for t, v in zip(volt_time, volt_values):
-        data_dict[t]["Volt"] = v
+        if v is not None:
+            data_dict[t]["Volt"] = v
+    for t, v in zip(therm_before_rad_time, therm_before_rad_raw):
+        if v is not None:
+            data_dict[t]["Therm_Before_Rad"] = v
+    for t, v in zip(therm_after_rad_time, therm_after_rad_raw):
+        if v is not None:
+            data_dict[t]["Therm_After_Rad"] = v
 
     all_times = sorted(data_dict.keys())
     with open(filename, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Time", "MT (EMA)", "MCT (EMA)", "Volt"])
+        writer.writerow(["Time", "motor", "mtrctrl", "Volt", "Therm_Before_Rad", "Therm_After_Rad"])
         for t in all_times:
-            mt = data_dict[t].get("MT", "")
-            mct = data_dict[t].get("MCT", "")
+            motor = data_dict[t].get("motor", "")
+            mtrctrl = data_dict[t].get("mtrctrl", "")
             volt = data_dict[t].get("Volt", "")
-            writer.writerow([t, mt, mct, volt])
+            therm_before_rad = data_dict[t].get("Therm_Before_Rad", "")
+            therm_after_rad = data_dict[t].get("Therm_After_Rad", "")
+            writer.writerow([t, motor, mtrctrl, volt, therm_before_rad, therm_after_rad])
 
 write_csv()
 
@@ -87,18 +88,6 @@ ax1.set_ylabel("Temperature (°C)")
 ax1.grid(True)
 ax1.legend()
 
-# --- 2. EMA Temps ---
-mt_plot_time = [t for t, v in zip(mt_time, mt_values_ema) if v is not None]
-mt_plot_val = [v for v in mt_values_ema if v is not None]
-bamo_plot_time = [t for t, v in zip(bamo_time, bamo_values_ema) if v is not None]
-bamo_plot_val = [v for v in bamo_values_ema if v is not None]
-
-ax2.plot(mt_plot_time, mt_plot_val, '^-', color='darkorange', label="Motor Temp (EMA)")
-ax2.plot(bamo_plot_time, bamo_plot_val, 's-', color='darkred', label="BAMOCAR Temp (EMA)")
-ax2.set_title("EMA-Smoothed Temperatures")
-ax2.set_ylabel("Temperature (°C)")
-ax2.grid(True)
-ax2.legend()
 
 # --- 3. Voltage ---
 ax3.plot(volt_time, volt_values, 'o-', color='green', label="Voltage")
