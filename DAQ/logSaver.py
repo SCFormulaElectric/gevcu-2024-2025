@@ -1,6 +1,6 @@
 import serial
 import serial.tools.list_ports
-ser = serial.Serial('COM3', 115200)
+ser = serial.Serial('COM5', 115200)
 with open("log.txt", "w", encoding="utf-8") as log:
     try:
         command = "LOGSDCARD=1\n"
