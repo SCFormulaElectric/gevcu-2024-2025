@@ -386,5 +386,3 @@ String Logger::printDeviceName(DeviceId deviceId) {
     String devString = String("[") + dev->getShortName() + String("] ");
     return devString;
 }
-
-
