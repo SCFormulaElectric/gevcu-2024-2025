@@ -136,35 +136,35 @@ void CoolingController::handleTick() {
     Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
 
 
-    // systemIO.setDigitalOutput(config->waterMotorPin,false);
-    // systemIO.setDigitalOutput(config->radiatorFanPin,false);
+    systemIO.setDigitalOutput(config->waterMotorPin,false);
+    systemIO.setDigitalOutput(config->radiatorFanPin,false);
     
-
-    // int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
-    // if(max_temp_percent >= 900){
-    //      //duty cycle 90
-    //      //TODO- check pin input
-    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
-    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
-    // }
-    // else if(max_temp_percent >= 800){
-    //     //duty cycle 80
-    //     //TODO- check pin input
-    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
-    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
-    // }
-    // else if(max_temp_percent>= 700){
-    //     //duty cycle 70
-    //     //TODO- check pin input
-    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
-    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
-    // }
-    // else if(max_temp_percent>= 600){
-    //     //duty cycle 60
-    //     //TODO- check pin input
-    //     systemIO.setDigitalOutput(config->waterMotorPin,true);
-    //     systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
-    // }
+    //this entire thing was commented out
+    int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    if(max_temp_percent >= 900){
+         //duty cycle 90
+         //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
+    }
+    else if(max_temp_percent >= 800){
+        //duty cycle 80
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
+    }
+    else if(max_temp_percent>= 700){
+        //duty cycle 70
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
+    }
+    else if(max_temp_percent>= 600){
+        //duty cycle 60
+        //TODO- check pin input
+        systemIO.setDigitalOutput(config->waterMotorPin,true);
+        systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
+    }
 
     // if (speed < 5)
     // {
@@ -230,9 +230,11 @@ void CoolingController::handleCanFrame(const CAN_message_t &frame){
     u_int8_t payload = decode_hex(frame.buf[2], frame.buf[1]);
     switch(frame.buf[0]){
         case 0x49: //motor
-            //motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
+            //this was commented out
+            motor_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_TEMP);
         case 0x4a: //motor controller 
-            //motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
+            //so was this
+            motor_ctrl_temp_percentage = normalizeInput(payload, 0, MAX_MOTOR_CTRL_TEMP);
         case 0x3D:
             speed = payload;
     }
