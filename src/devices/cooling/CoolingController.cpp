@@ -146,24 +146,28 @@ void CoolingController::handleTick() {
          //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
+        Logger::console("90%");
     }
     else if(max_temp_percent >= 800){
         //duty cycle 80
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
+        Logger::console("80%");
     }
     else if(max_temp_percent>= 700){
         //duty cycle 70
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
+        Logger::console("70%");
     }
     else if(max_temp_percent>= 600){
         //duty cycle 60
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
+        Logger::console("60%");
     }
 
     // if (speed < 5)
