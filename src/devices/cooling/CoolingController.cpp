@@ -60,6 +60,7 @@ void CoolingController::setup() {
 
     StatusEntry stat;// Values that should not be changed to the outside world
 
+    
 
     // stat = {"COOLING_AccumulatorFanOn", &isAccumulatorFanOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
     // deviceManager.addStatusEntry(stat);
@@ -86,8 +87,8 @@ void CoolingController::setup() {
     // tickInterval = 1000;
     // lastDigitalInputState = false; 
 
-    // MAX_MOTOR_TEMP = 45;
-    // MAX_MOTOR_CTRL_TEMP = 70;
+    MAX_MOTOR_TEMP = 45;
+    MAX_MOTOR_CTRL_TEMP = 70;
     motor_temp_percentage = 0;
     motor_ctrl_temp_percentage = 0;
     speed = 0;
@@ -138,6 +139,7 @@ void CoolingController::handleTick() {
 
     systemIO.setDigitalOutput(config->waterMotorPin,false);
     systemIO.setDigitalOutput(config->radiatorFanPin,false);
+
     
     //this entire thing was commented out
     int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
@@ -146,28 +148,28 @@ void CoolingController::handleTick() {
          //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
-        Logger::console("90%");
+        Logger::console("90 per");
     }
     else if(max_temp_percent >= 800){
         //duty cycle 80
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
-        Logger::console("80%");
+        Logger::console("80 per");
     }
     else if(max_temp_percent>= 700){
         //duty cycle 70
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
-        Logger::console("70%");
+        Logger::console("70 per");
     }
     else if(max_temp_percent>= 600){
         //duty cycle 60
         //TODO- check pin input
         systemIO.setDigitalOutput(config->waterMotorPin,true);
         systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
-        Logger::console("60%");
+        Logger::console("60 per");
     }
 
     // if (speed < 5)

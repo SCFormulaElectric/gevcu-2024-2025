@@ -103,8 +103,8 @@ private:
     // uint32_t tickInterval;
     // bool lastDigitalInputState; 
 
-    const int MAX_MOTOR_TEMP;
-    const int MAX_MOTOR_CTRL_TEMP;
+    int MAX_MOTOR_TEMP;
+    int MAX_MOTOR_CTRL_TEMP;
     int speed;
     int16_t motor_temp_percentage;
     int16_t motor_ctrl_temp_percentage;
