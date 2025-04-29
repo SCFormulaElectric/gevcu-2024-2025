@@ -72,24 +72,24 @@ DeviceType DashboardDevice::getType() {
 
 void DashboardDevice::handleTick()
 {
-    var.id = 0x444;
-    var.len = 4;
-    var.buf[0] = 20;
-    var.buf[1] = 40;
-    var.buf[2] = 50;
-    var.buf[3] = 100;
-    attachedCANBus->sendFrame(var);
-    Logger::console("DashboardDevice: Sending test frame");
-    if (prev_motor_temp != motor_temp || prev_bamocar_temp != bamocar_temp || speed != prev_speed || battery != prev_battery){
-        var.buf[0] = speed;
-        var.buf[1] = motor_temp;
-        var.buf[2] = battery;
-        var.buf[3] = bamocar_temp;
-        attachedCANBus->sendFrame(var);
-        prev_speed = speed;
-        prev_motor_temp = motor_temp;
-        prev_battery = battery;
-        prev_bamocar_temp = bamocar_temp;
-    }
+    // var.id = 0x444;
+    // var.len = 4;
+    // var.buf[0] = 20;
+    // var.buf[1] = 40;
+    // var.buf[2] = 50;
+    // var.buf[3] = 100;
+    // attachedCANBus->sendFrame(var);
+    // Logger::console("DashboardDevice: Sending test frame");
+    // if (prev_motor_temp != motor_temp || prev_bamocar_temp != bamocar_temp || speed != prev_speed || battery != prev_battery){
+    //     var.buf[0] = speed;
+    //     var.buf[1] = motor_temp;
+    //     var.buf[2] = battery;
+    //     var.buf[3] = bamocar_temp;
+    //     attachedCANBus->sendFrame(var);
+    //     prev_speed = speed;
+    //     prev_motor_temp = motor_temp;
+    //     prev_battery = battery;
+    //     prev_bamocar_temp = bamocar_temp;
+    // }
 }
 DashboardDevice dash_device;
