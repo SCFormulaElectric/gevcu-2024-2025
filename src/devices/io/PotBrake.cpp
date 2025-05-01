@@ -302,10 +302,10 @@ void PotBrake::loadConfiguration() {
         prefsHandler->read("BrakeMax", (uint16_t *)&config->maximumLevel1, 3681);
         prefsHandler->read("BrakeMin", (uint16_t *)&config->minimumLevel2, 409);
         prefsHandler->read("BrakeMax", (uint16_t *)&config->maximumLevel2, 3681);
-        prefsHandler->read("BrakeADC1", &config->AdcPin1, 4);
-        prefsHandler->read("BrakeADC2", &config->AdcPin2, 5);
+        prefsHandler->read("BrakeADC1", &config->AdcPin1, 6);
+        prefsHandler->read("BrakeADC2", &config->AdcPin2, 7);
         prefsHandler->read("numberPotMeters", (uint16_t *)&config->numberPotMeters, 2);
-        
+        prefsHandler->write("throttleSubType", (uint8_t *)&config->throttleSubType, 1);
         Logger::debug(POTBRAKEPEDAL, "BRAKE MIN: %i MAX: %i", config->minimumLevel1, config->maximumLevel1);
         Logger::debug(POTBRAKEPEDAL, "Min: %i MaxRegen: %i", config->minimumRegen, config->maximumRegen);
 }
