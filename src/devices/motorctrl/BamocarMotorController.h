@@ -14,7 +14,7 @@
 #include "../misc/Statemachine.h"
 
 #define BAMOCARINVERTER 0x1010
-#define CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR     40000
+#define CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR     150'000
 
 #define N_NOM 0x59
 #define F_NOM 0x05
