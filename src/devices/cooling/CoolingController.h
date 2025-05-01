@@ -38,7 +38,7 @@
 #include "../../FaultCodes.h"
 
 #define COOLCONTROL 0x3210
-#define CFG_TICK_INTERVAL_COOLCONTROL     200000
+#define CFG_TICK_INTERVAL_COOLCONTROL     5'000'000 //5 seconds
 
 
 class CoolingControllerConfiguration: public DeviceConfiguration {
