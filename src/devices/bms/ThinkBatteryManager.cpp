@@ -93,6 +93,7 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
      */
     int temp;
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 1);
+    //TODO figure out why this is here!
     canHandlerBus0.process(frame);
     switch (frame.id) {
         case 0x308: // Cell Data
@@ -218,7 +219,7 @@ void ThinkBatteryManager::loadConfiguration() {
 
     BatteryManager::loadConfiguration(); // call parent
 
-    prefsHandler->read("CanbusNum", &config->canbusNum, 0);
+    prefsHandler->read("CanbusNum", &config->canbusNum, 1);
 }
 
 void ThinkBatteryManager::saveConfiguration() {
