@@ -4,6 +4,9 @@
 #include "BamocarMotorController.h"
 #include "../misc/Statemachine.h"
 #include <sstream>
+// #include <cmath>
+
+// uint8_t count;
 
 
 class StatemachineDevice;
@@ -124,6 +127,15 @@ void BamocarMotorController::handleTick() {
         }
     }
     else{
+        // const double threshold;
+        // if (abs(calcThrottle1-calcThrottle2)<threshold){
+        //     count++;
+        //     if (count>1000){
+        //         freeRolling.buf[1] = 0x04;
+        //         attachedCANBus->sendFrame(freeRolling);
+        //     }
+
+        // }
         // throttleAnalogValue = throttleAnalogValue/20;
         //131071 is 2^17-1 which is in binary is 16 1's since this uses two's complement, this gives you a speed of around -1, as A increases to its max of 100, it will subtract around 2^16-1 from the binary giving you just a leading bit of 1 and a very large negative number as your speed.
         mappedMotorTorque = throttleAnalogValue/10 * 327;
