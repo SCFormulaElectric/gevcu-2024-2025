@@ -81,6 +81,7 @@ void Throttle::handleTick() {
     if (validateSignal(rawSignals)) { // validate the raw data
         int16_t position = calculatePedalPosition(rawSignals); // bring the raw data into a range of 0-1000 (without mapping)
         level = mapPedalPosition(position); // apply mapping of the 0-1000 range to the user defined settings
+        
     } else
         level = 0;
 }
@@ -118,21 +119,21 @@ int16_t Throttle::mapPedalPosition(int16_t pedalPosition) {
 
     throttleLevel = 0;
 
-    if (pedalPosition == 0 && config->creep > 0) {
-        throttleLevel = 10 * config->creep;
-    } else if (pedalPosition <= config->positionRegenMinimum) {
-        if (pedalPosition >= config->positionRegenMaximum) {
-            range = config->positionRegenMinimum - config->positionRegenMaximum;
-            value = pedalPosition - config->positionRegenMaximum;
-            if (range != 0) // prevent div by zero, should result in 0 throttle if min==max
-                throttleLevel = -10 * config->minimumRegen + (config->maximumRegen - config->minimumRegen) * (100 - value * 100 / range) / -10;
-        } else {
-            // no ramping yet below positionRegenMaximum, just drop to 0
-//			range = config->positionRegenMaximum;
-//			value = pedalPosition;
-//			throttleLevel = -10 * config->maximumRegen * value / range;
-        }
-    }
+//     if (pedalPosition == 0 && config->creep > 0) {
+//         throttleLevel = 10 * config->creep;
+//     } else if (pedalPosition <= config->positionRegenMinimum) {
+//         if (pedalPosition >= config->positionRegenMaximum) {
+//             range = config->positionRegenMinimum - config->positionRegenMaximum;
+//             value = pedalPosition - config->positionRegenMaximum;
+//             if (range != 0) // prevent div by zero, should result in 0 throttle if min==max
+//                 throttleLevel = -10 * config->minimumRegen + (config->maximumRegen - config->minimumRegen) * (100 - value * 100 / range) / -10;
+//         } else {
+//             // no ramping yet below positionRegenMaximum, just drop to 0
+// //			range = config->positionRegenMaximum;
+// //			value = pedalPosition;
+// //			throttleLevel = -10 * config->maximumRegen * value / range;
+//         }
+//     }
 
     if (pedalPosition >= config->positionForwardMotionStart) {
         if (pedalPosition <= config->positionHalfPower) {
@@ -233,9 +234,9 @@ void Throttle::loadConfiguration() {
     Device::loadConfiguration(); // call parent
 
     //if (prefsHandler->checksumValid()) { //checksum is good, read in the values stored in EEPROM
-        prefsHandler->read("RegenMin", &config->positionRegenMinimum, 270);
+        prefsHandler->read("RegenMin", &config->positionRegenMinimum, 0);
         prefsHandler->read("RegenMax", &config->positionRegenMaximum, 0);
-        prefsHandler->read("ForwardStart", &config->positionForwardMotionStart, 280);
+        prefsHandler->read("ForwardStart", &config->positionForwardMotionStart, 0);
         prefsHandler->read("MapPoint", &config->positionHalfPower, 750);
         prefsHandler->read("Creep", &config->creep, 0);
         prefsHandler->read("MinAccelRegen", &config->minimumRegen, 0);

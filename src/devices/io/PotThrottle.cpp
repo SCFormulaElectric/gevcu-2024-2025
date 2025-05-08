@@ -327,10 +327,6 @@ String PotThrottle::describeThrottleType()
     if (config->throttleSubType == 2) return String("Inverse Linear");
     return String("Invalid Value!");
 }
-int16_t PotThrottle::getLevel()
-{
-    return calculatePedalPosition(acquireRawSignal());
-}
 //creation of a global variable here causes the driver to automatically register itself without external help
 PotThrottle potThrottle;
 
