@@ -267,3 +267,9 @@ void Throttle::saveConfiguration() {
 }
 
 
+void Throttle::sendDashErrorMessage(ThrottleStatus status) {
+    throttleErrorMessage.len = 1;
+    throttleErrorMessage.id = 0x500;
+    throttleErrorMessage.buf[0] = status;
+    attachedCANBus->sendMessage(throttleErrorMessage);
+}

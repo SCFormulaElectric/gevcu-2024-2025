@@ -85,7 +85,7 @@ public:
 /*
  * Abstract class for all throttle implementations.
  */
-class Throttle: public Device {
+class Throttle: public Device, public CanObserver{
 public:
     enum ThrottleStatus {
         OK,
@@ -116,7 +116,10 @@ protected:
     virtual int16_t calculatePedalPosition(RawSignalData *);
     virtual int16_t mapPedalPosition(int16_t);
     int16_t normalizeAndConstrainInput(int32_t, int32_t, int32_t);
-    int32_t normalizeInput(int32_t, int32_t, int32_t);    
+    int32_t normalizeInput(int32_t, int32_t, int32_t);
+    void sendDashErrorMessage(ThrottleStatus status);   
+    CAN_message_t throttleErrorMessage; 
+    
 
 private:
     int16_t level; // the final signed throttle level. [-1000, 1000] in permille of maximum

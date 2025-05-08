@@ -45,7 +45,8 @@ void PotThrottle::earlyInit()
 void PotThrottle::setup() {
     crashHandler.addBreadcrumb(ENCODE_BREAD("PTTHR") + 0);
     tickHandler.detach(this); // unregister from TickHandler first
-
+    setAttachedCANBus(1);
+    attachedCANBus->attach(this, 0x000, 0xfff, false);
     Logger::info("add device: PotThrottle (id: %X, %X)", POTACCELPEDAL, this);
 
     loadConfiguration();
@@ -114,9 +115,11 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
 
     if (calcThrottle1 > (1000 + CFG_THROTTLE_TOLERANCE))
     {
-        if (status == OK)
+        if (status == OK){
+            status = ERR_HIGH_T1;
             Logger::error(POTACCELPEDAL, "ERR_HIGH_T1: throttle 1 value out of range: %i", calcThrottle1);
-        status = ERR_HIGH_T1;
+            sendDashErrorMessage(status);
+        }
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A, true);
         return false;
     }
@@ -127,9 +130,11 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
     }
 
     if (calcThrottle1 < (0 - CFG_THROTTLE_TOLERANCE)) {
-        if (status == OK)
+        if (status == OK){
+            status = ERR_LOW_T1;
             Logger::error(POTACCELPEDAL, "ERR_LOW_T1: throttle 1 value out of range: %i ", calcThrottle1);
-        status = ERR_LOW_T1;
+            sendDashErrorMessage(status);
+        }
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A, true);
         return false;
     }
@@ -143,9 +148,11 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
         calcThrottle2 = normalizeInput(rawSignal->input2, config->minimumLevel2, config->maximumLevel2);
 
         if (calcThrottle2 > (1000 + CFG_THROTTLE_TOLERANCE)) {
-            if (status == OK)
+            if (status == OK){
                 Logger::error(POTACCELPEDAL, "ERR_HIGH_T2: throttle 2 value out of range: %i", calcThrottle2);
-            status = ERR_HIGH_T2;
+                status = ERR_HIGH_T2;
+                sendDashErrorMessage(status);
+            }
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B, true);
             return false;
         }
@@ -156,9 +163,11 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
         }
 
         if (calcThrottle2 < (0 - CFG_THROTTLE_TOLERANCE)) {
-            if (status == OK)
-                Logger::error(POTACCELPEDAL, "ERR_LOW_T2: throttle 2 value out of range: %i", calcThrottle2);
-            status = ERR_LOW_T2;
+            if (status == OK){
+                status = ERR_LOW_T2;
+                Logger::error(POTACCELPEDAL, "ERR_LOW_T2: throttle 2 value out of range: %i ", calcThrottle2);
+                sendDashErrorMessage(status);
+            }
             faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B);
             return false;
         }
@@ -171,10 +180,12 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
         if (config->throttleSubType == 2) {
             // inverted throttle 2 means the sum of the two throttles should be 1000
             if ( abs(1000 - calcThrottle1 - calcThrottle2) > ThrottleMaxErrValue) {
-                if (status == OK)
+                if (status == OK){
+                    status = ERR_MISMATCH;
                     Logger::error(POTACCELPEDAL, "Sum of throttle 1 (%i) and throttle 2 (%i) exceeds max variance from 1000 (%i)",
                                   calcThrottle1, calcThrottle2, ThrottleMaxErrValue);
-                status = ERR_MISMATCH;
+                    sendDashErrorMessage(status);
+                }
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
                 return false;
             }
@@ -184,16 +195,20 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             }
         } else {
             if ((calcThrottle1 - ThrottleMaxErrValue) > calcThrottle2) { //then throttle1 is too large compared to 2
-                if (status == OK)
+                if (status == OK){
+                    status = ERR_MISMATCH;
                     Logger::error(POTACCELPEDAL, "throttle 1 too high (%i) compared to 2 (%i)", calcThrottle1, calcThrottle2);
-                status = ERR_MISMATCH;
+                    sendDashErrorMessage(status);
+                }
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
                 return false;
             }
             else if ((calcThrottle2 - ThrottleMaxErrValue) > calcThrottle1) { //then throttle2 is too large compared to 1
-                if (status == OK)
+                if (status == OK){
+                    status = ERR_MISMATCH;
                     Logger::error(POTACCELPEDAL, "throttle 2 too high (%i) compared to 1 (%i)", calcThrottle2, calcThrottle1);
-                status = ERR_MISMATCH;
+                    sendDashErrorMessage(status);
+                }
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
                 return false;
             }
