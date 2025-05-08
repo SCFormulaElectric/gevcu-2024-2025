@@ -118,7 +118,6 @@ protected:
     int16_t normalizeAndConstrainInput(int32_t, int32_t, int32_t);
     int32_t normalizeInput(int32_t, int32_t, int32_t);
     void sendDashErrorMessage(ThrottleStatus status);   
-    CAN_message_t throttleErrorMessage; 
     
 
 private:

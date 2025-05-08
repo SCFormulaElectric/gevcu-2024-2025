@@ -341,4 +341,11 @@ void PotBrake::saveConfiguration() {
     prefsHandler->forceCacheWrite();
 }
 
+void PotBrake::sendDashErrorMessage(ThrottleStatus status) {
+    PotBrakeErrorMessage.len = 1;
+    PotBrakeErrorMessage.id = 0x500;
+    PotBrakeErrorMessage.buf[0] = status;
+    attachedCANBus->sendMessage(PotBrakeErrorMessage);
+}
+
 DMAMEM PotBrake potBrake;

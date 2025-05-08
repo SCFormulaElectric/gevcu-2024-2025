@@ -341,6 +341,13 @@ int16_t PotThrottle::getLevel()
 {
     return calculatePedalPosition(acquireRawSignal());
 }
+
+void PotThrottle::sendDashErrorMessage(ThrottleStatus status) {
+    PotThrottleErrorMessage.len = 1;
+    PotThrottleErrorMessage.id = 0x501;
+    PotThrottleErrorMessage.buf[0] = status;
+    attachedCANBus->sendMessage(PotThrottleErrorMessage);
+}
 //creation of a global variable here causes the driver to automatically register itself without external help
 PotThrottle potThrottle;
 

@@ -69,7 +69,9 @@ protected:
     int16_t mapPedalPosition(int16_t);
 
 private:
+    void sendDashErrorMessage(ThrottleStatus status);
     RawSignalData rawSignal;
+    CAN_message_t PotBrakeErrorMessage;
     
 };
 

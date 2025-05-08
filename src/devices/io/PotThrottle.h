@@ -78,6 +78,8 @@ protected:
     int16_t calculatePedalPosition(RawSignalData *);
 
 private:
+    void sendDashErrorMessage(ThrottleStatus status);
+    Can_message_t PotThrottleErrorMessage;
     RawSignalData rawSignal;
 };
 
