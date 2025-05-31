@@ -151,10 +151,8 @@ void BamocarMotorController::handleTick() {
                     attachedCANBus->sendFrame(var);
                     last_sent_value = mappedMotorTorque;
                 }
+                break;
             }
-        default:
-            Logger::warn("Unknown operation state.");
-            break;
     }
 }
 
