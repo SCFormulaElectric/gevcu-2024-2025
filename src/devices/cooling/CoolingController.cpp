@@ -92,7 +92,7 @@ void CoolingController::setup() {
     motor_temp_percentage = 0;
     motor_ctrl_temp_percentage = 0;
     speed = 0;
-
+    motorController = deviceManager.getMotorController();
 }
 
 /*

@@ -108,6 +108,7 @@ private:
     int speed;
     int16_t motor_temp_percentage;
     int16_t motor_ctrl_temp_percentage;
+    MotorController* motorController;
 };
 
 #endif
