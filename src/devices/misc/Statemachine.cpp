@@ -69,7 +69,6 @@ void StatemachineDevice::setup() {
     //Relevant BMS messages are 0x300 - 0x30F
     attachedCANBus->attach(this, 0x310, 0x000, false);
     tickHandler.attach(this, StatemachineTickInt);
-
     // set flags
     dash_send_flag = 1;
     dash_val_msg = 0;
@@ -135,17 +134,20 @@ void StatemachineDevice::handleTick() {
   // int brakeLevel = 10;                           // change this until it's time to test the pressure sensor
 
 
-  tsms       = systemIO.getDigitalIn(2);    // i think this is equivalent to the shutdown
-  r2d        = systemIO.getDigitalIn(1);
+  tsms       = systemIO.getDigitalIn(5);    // i think this is equivalent to the shutdown
+  r2d        = systemIO.getDigitalIn(4);
   int brakeA = systemIO.getAnalogIn(6);     // read same pressure as B?
   int brakeB = systemIO.getAnalogIn(7);     // read same pressure as A?
 
   //tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
-  if (abs(brakeA - brakeB) < 300)                       // change the value above some threshold
+  if (abs(brakeA + brakeB) > 2000)                       // change the value above some threshold
   {
     threshold_brake = true;
+  }
+  else {
+    threshold_brake = false;
   }
   // threshold_brake = true;
   if (extern_curr_state == S0) {        // state 0, this is tested
@@ -156,8 +158,8 @@ void StatemachineDevice::handleTick() {
       updateState(S0);
     }
     Logger::console("I am in state S0");
-    Logger::console("DIN4: %d, DIN5: %d", tsms, r2d);
-    Logger::console("end \n ");
+    Logger::console("DIN2: %d, DIN1: %d", tsms, r2d);
+    // Logger::console("end \n ");
 
   } else if (extern_curr_state == S1) { // state 1
     if (dash_send_flag) {

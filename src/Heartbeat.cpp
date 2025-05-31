@@ -79,6 +79,10 @@ void Heartbeat::handleTick() {
         Logger::console("AIN0: %i, AIN1: %i, AIN2: %i, AIN3: %i, AIN4: %i, AIN5: %i, AIN6: %i, AIN7: %i", 
                         systemIO.getAnalogIn(0), systemIO.getAnalogIn(1), systemIO.getAnalogIn(2), systemIO.getAnalogIn(3),
                         systemIO.getAnalogIn(4), systemIO.getAnalogIn(5), systemIO.getAnalogIn(6), systemIO.getAnalogIn(7));
+        Logger::console("DIN0: %d, DIN1: %d, DIN2: %d, DIN3: %d,DIN4: %d, DIN5: %d, DIN6: %d, DIN7: %d", 
+                        systemIO.getDigitalIn(0), systemIO.getDigitalIn(1), systemIO.getDigitalIn(2), systemIO.getDigitalIn(3),
+                        systemIO.getDigitalIn(4), systemIO.getDigitalIn(5), systemIO.getDigitalIn(6), systemIO.getDigitalOutput(7));
+        
         Logger::console("DOUT0: %d, DOUT1: %d, DOUT2: %d, DOUT3: %d,DOUT4: %d, DOUT5: %d, DOUT6: %d, DOUT7: %d", 
                         systemIO.getDigitalOutput(0), systemIO.getDigitalOutput(1), systemIO.getDigitalOutput(2), systemIO.getDigitalOutput(3),
                         systemIO.getDigitalOutput(4), systemIO.getDigitalOutput(5), systemIO.getDigitalOutput(6), systemIO.getDigitalOutput(7));
