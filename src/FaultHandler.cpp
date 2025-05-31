@@ -36,12 +36,9 @@ void FaultHandler::setup()
     tickHandler.detach(this);
 
     Logger::info("Initializing Fault Handler", FAULTSYS, this);
-
-    //loadFromEEPROM();
-
-    //Use the heartbeat interval because it's slow and already exists so we can piggyback on the interrupt
-    //so as to not create more timers than necessary.
-    //tickHandler.attach(this, CFG_TICK_INTERVAL_HEARTBEAT);
+    setAttachedCANBus(1);    
+    errorCanMsg.len = 1;
+    errorCanMsg.id = 0x500;
 }
 
 
@@ -54,48 +51,49 @@ void FaultHandler::handleTick()
 
 uint16_t FaultHandler::raiseFault(uint16_t device, uint16_t code, bool ongoing = false)
 {
-    return 0; //this function is broken.
-    bool incPtr = false;
-    globalTime = baseTime + (millis() / 100);
+    
+    return 0;
+    // bool incPtr = false;
+    // globalTime = baseTime + (millis() / 100);
 
-    //first try to see if this fault is already registered as ongoing. If so don't update the time but set ongoing status if necessary
-    bool found = false;
-    for (int j = 0; j < CFG_FAULT_HISTORY_SIZE; j++)
-    {
-        if (faultList[j].ongoing && faultList[j].device == device && faultList[j].faultCode == code)
-        {
-            found = true;
-            //faultList[j].timeStamp = globalTime;
-            faultList[j].ongoing = ongoing;
-            break; //quit searching
-        }
-    }
+    // //first try to see if this fault is already registered as ongoing. If so don't update the time but set ongoing status if necessary
+    // bool found = false;
+    // for (int j = 0; j < CFG_FAULT_HISTORY_SIZE; j++)
+    // {
+    //     if (faultList[j].ongoing && faultList[j].device == device && faultList[j].faultCode == code)
+    //     {
+    //         found = true;
+    //         //faultList[j].timeStamp = globalTime;
+    //         faultList[j].ongoing = ongoing;
+    //         break; //quit searching
+    //     }
+    // }
 
-    //nothing ongoing to register a new one
-    if (!found)
-    {
-        faultList[faultWritePointer].timeStamp = globalTime;
-        faultList[faultWritePointer].ack = false;
-        faultList[faultWritePointer].device = device;
-        faultList[faultWritePointer].faultCode = code;
-        faultList[faultWritePointer].ongoing = ongoing;
-        incPtr = true;
-    }
+    // //nothing ongoing to register a new one
+    // if (!found)
+    // {
+    //     faultList[faultWritePointer].timeStamp = globalTime;
+    //     faultList[faultWritePointer].ack = false;
+    //     faultList[faultWritePointer].device = device;
+    //     faultList[faultWritePointer].faultCode = code;
+    //     faultList[faultWritePointer].ongoing = ongoing;
+    //     incPtr = true;
+    // }
 
-    //write back to EEPROM cache
-    memCache->Write(EE_FAULT_LOG + EEFAULT_FAULTS_START + sizeof(FAULT) * faultWritePointer, &faultList[faultWritePointer], sizeof(FAULT));
+    // //write back to EEPROM cache
+    // memCache->Write(EE_FAULT_LOG + EEFAULT_FAULTS_START + sizeof(FAULT) * faultWritePointer, &faultList[faultWritePointer], sizeof(FAULT));
 
-    if (incPtr)
-    {
-        //Cause the memory caching system to immediately write the page but only if incPtr is set (only if this is a new fault)
-        memCache->InvalidateAddress(EE_FAULT_LOG + EEFAULT_FAULTS_START + sizeof(FAULT)* faultWritePointer);
-        faultWritePointer = (faultWritePointer + 1) % CFG_FAULT_HISTORY_SIZE;
-        memCache->Write(EE_FAULT_LOG + EEFAULT_WRITEPTR , faultWritePointer);
-        //Cause the page to be immediately fully aged so that it is written very soon.
-        memCache->AgeFullyAddress(EE_FAULT_LOG + EEFAULT_WRITEPTR);
-        //Also announce fault on the console
-        Logger::error(FAULTSYS, "Fault %x raised by device %x at uptime %i", code, device, globalTime);
-    }
+    // if (incPtr)
+    // {
+    //     //Cause the memory caching system to immediately write the page but only if incPtr is set (only if this is a new fault)
+    //     memCache->InvalidateAddress(EE_FAULT_LOG + EEFAULT_FAULTS_START + sizeof(FAULT)* faultWritePointer);
+    //     faultWritePointer = (faultWritePointer + 1) % CFG_FAULT_HISTORY_SIZE;
+    //     memCache->Write(EE_FAULT_LOG + EEFAULT_WRITEPTR , faultWritePointer);
+    //     //Cause the page to be immediately fully aged so that it is written very soon.
+    //     memCache->AgeFullyAddress(EE_FAULT_LOG + EEFAULT_WRITEPTR);
+    //     //Also announce fault on the console
+    //     Logger::error(FAULTSYS, "Fault %x raised by device %x at uptime %i", code, device, globalTime);
+    // }
 }
 
 void FaultHandler::cancelOngoingFault(uint16_t device, uint16_t code)

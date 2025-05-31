@@ -32,10 +32,7 @@ void BamocarMotorController::setup() {
     setSelectedGear(DRIVE);
     setOpState(ENABLE);
 
-    setAttachedCANBus(1);
-    //Can Message to Bamocar for the actual speed
-    attachedCANBus->attach(this, 0x100, 0x000, false);
-    
+    setAttachedCANBus(1);    
     tickHandler.attach(this, CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR);
 
     // on start up make sure that the car is not locked up

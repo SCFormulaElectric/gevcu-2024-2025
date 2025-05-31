@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Logger.h"
 #include "FaultCodes.h"
 #include "MemCache.h"
+#include "CanHandler.h"
 
 extern MemCache *memCache;
 
@@ -51,7 +52,7 @@ typedef struct {
 } FAULT; //should be 9 bytes because the bottom two are bit fields in a single byte
 
 
-class FaultHandler : public TickObserver {
+class FaultHandler : public TickObserver, CanObserver {
 public:
     FaultHandler(); //constructor
     uint16_t raiseFault(uint16_t device, uint16_t code, bool ongoing); //raise a new fault. Returns the fault # where this was stored
@@ -69,7 +70,7 @@ private:
     void loadFromEEPROM();
     void saveToEEPROM();
     void writeFaultToEEPROM(int faultnum);
-
+    CAN_message_t errorCanMsg;
     uint16_t  faultWritePointer; //fault # we're up to for writing. Location in EEPROM is start + (fault_ptr * sizeof(FAULT))
     uint16_t  faultReadPointer;  //fault # we're at when reading.
     FAULT faultList[CFG_FAULT_HISTORY_SIZE]; //store up to 50 faults for a long history. 50*9 = 450 bytes of EEPROM
