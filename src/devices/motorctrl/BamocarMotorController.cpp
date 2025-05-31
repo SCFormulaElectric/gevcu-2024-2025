@@ -74,6 +74,7 @@ void BamocarMotorController::setup() {
     enable_sent = false;
     disable_sent = true;
     last_sent_value = 0;
+    mappedMotorTorque = 0;
 }
 
 
@@ -100,59 +101,47 @@ void BamocarMotorController::handleTick() {
     if (throttleRequested > 1400) throttleRequested = 0;
 
     throttleAnalogValue = throttleRequested / 10 * 10; // rounding it to the nearest 10th percent
-    if(extern_curr_state == S2)
+    if (throttleAnalogValue < 50)
     {
-        // Logger::console("\n Bamocar: S2 loop");
-        if (throttleAnalogValue < 50)
+        throttleAnalogValue = 0;
+        if(!disable_sent){
+            attachedCANBus -> sendFrame(freeRolling);
+            last_sent_value = 0;
+            disable_sent = true;
+            enable_sent = false;
+
+        }
+    }
+    else{
+        // throttleAnalogValue = throttleAnalogValue/20;
+        //131071 is 2^17-1 which is in binary is 16 1's since this uses two's complement, this gives you a speed of around -1, as A increases to its max of 100, it will subtract around 2^16-1 from the binary giving you just a leading bit of 1 and a very large negative number as your speed.
+        mappedMotorTorque = throttleAnalogValue/10 * 20;
+        // (the following comments disregard the if/else statement)
+        // at a = 0 (throttle not pressed), a becomes 2^17 -1 which is 17 1s. When this number is passed through first and second half and through the frame, the 17th bit gets truncated (buf values are 8 bits) --> -1 speed command
+        // at a = 1000 (fully pressed), a becomes 65535 which is 16 1s. 
+
+        uint32_t secondhalf = (mappedMotorTorque & 0xFF);
+        uint32_t firsthalf = ((mappedMotorTorque >> 8));
+        
+        if (!enable_sent){
+            var.buf[0] = 0x51;
+            var.buf[1] = 0x00;
+            var.buf[2] = 0x00;
+            attachedCANBus->sendFrame(var);
+            disable_sent = false;
+            enable_sent = true;
+
+        }
+        else if (last_sent_value != mappedMotorTorque) //0x31 for speed, 0x90 for torque
         {
-            throttleAnalogValue = 0;
-            if(!disable_sent){
-                attachedCANBus -> sendFrame(freeRolling);
-                last_sent_value = 0;
-                disable_sent = true;
-                enable_sent = false;
-            }
+            var.buf[0] = 0x90;
+            var.buf[1] = secondhalf; //secondhalf
+            var.buf[2] = firsthalf; // first half
+            attachedCANBus->sendFrame(var);
+            last_sent_value = mappedMotorTorque;
         }
-        else{
-            throttleAnalogValue = throttleAnalogValue/20;
-            //131071 is 2^17-1 which is in binary is 16 1's since this uses two's complement, this gives you a speed of around -1, as A increases to its max of 100, it will subtract around 2^16-1 from the binary giving you just a leading bit of 1 and a very large negative number as your speed.
-            throttleAnalogValue = 65535 - throttleAnalogValue * 327;
-            // (the following comments disregard the if/else statement)
-            // at a = 0 (throttle not pressed), a becomes 2^17 -1 which is 17 1s. When this number is passed through first and second half and through the frame, the 17th bit gets truncated (buf values are 8 bits) --> -1 speed command
-            // at a = 1000 (fully pressed), a becomes 65535 which is 16 1s. 
-
-            uint32_t secondhalf = (throttleAnalogValue & 0xFF);
-            uint32_t firsthalf = ((throttleAnalogValue >> 8));
-            
-
-            var.len = 3;
-            var.id = 0x201;
-
-            if (!enable_sent){
-                var.buf[0] = 0x51;
-                var.buf[1] = 0x00;
-                var.buf[2] = 0x00;
-                attachedCANBus->sendFrame(var);
-                disable_sent = false;
-                enable_sent = true;
-            }
-            if (last_sent_value != throttleAnalogValue){
-                //0x31 for speed, 0x90 for torque
-                var.buf[0] = 0x90;
-                var.buf[1] = secondhalf; //secondhalf
-                var.buf[2] = firsthalf; // first half
-                attachedCANBus->sendFrame(var);
-                last_sent_value = throttleAnalogValue;
-            }
-
-        }
-    }   
-    else if(extern_curr_state == S1){
-        // Logger::console("\n Bamocar: S1 loop");
     }
-    else {
-        // Logger::console("\n Bamocar: S0 loop");
-    }
+    
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
