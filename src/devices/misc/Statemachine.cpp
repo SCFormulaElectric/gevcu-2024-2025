@@ -167,7 +167,7 @@ void StatemachineDevice::handleTick() {
       attachedCANBus->sendFrame(buzz_msg);
       Logger::console("I sent message\n");
     }
-    if (tsms && threshold_brake && dash_val_msg) {
+    if (tsms && dash_val_msg) {
       updateState(S2);
     } else {
       updateState(S0);
