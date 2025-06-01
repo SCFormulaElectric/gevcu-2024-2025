@@ -142,7 +142,7 @@ void StatemachineDevice::handleTick() {
   //tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
-  if (abs(brakeA + brakeB) > 2000)                       // change the value above some threshold
+  if (abs(brakeA + brakeB) > 1500)                       // change the value above some threshold
   {
     threshold_brake = true;
   }
@@ -158,7 +158,7 @@ void StatemachineDevice::handleTick() {
       updateState(S0);
     }
     Logger::console("I am in state S0");
-    Logger::console("DIN2: %d, DIN1: %d", tsms, r2d);
+    Logger::console("TSMS: %d, R2D: %d", tsms, r2d);
     // Logger::console("end \n ");
 
   } else if (extern_curr_state == S1) { // state 1
@@ -167,21 +167,18 @@ void StatemachineDevice::handleTick() {
       attachedCANBus->sendFrame(buzz_msg);
       Logger::console("I sent message\n");
     }
-    if (tsms && threshold_brake) {
-      updateState(S1);
-      if (dash_val_msg) {
-        updateState(S2);
-      }
+    if (tsms && threshold_brake && dash_val_msg) {
+      updateState(S2);
     } else {
       updateState(S0);
     }
 
     counter_timer++;
     Logger::console("counter: %d", counter_timer);
-    if (counter_timer > 50){
+    if (counter_timer > 20){
       dash_send_flag = 1;
       counter_timer = 0;
-       buzz_msg.buf[1] = 2; // if you have to resend the signal, in state 2
+      buzz_msg.buf[1] = 2; // if you have to resend the signal, in state 2
     }
     Logger::console(" I am in state S1\n");
 
@@ -197,9 +194,7 @@ void StatemachineDevice::handleTick() {
     */
 
   } else if (extern_curr_state == S2) { // state 2
-    if(tsms){
-      updateState(S2);
-    } else {
+    if(!tsms){
       updateState(S0);
     }
     Logger::console("\n I am in state S2");

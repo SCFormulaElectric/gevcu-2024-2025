@@ -34,7 +34,7 @@ void BamocarMotorController::setup() {
 
     setAttachedCANBus(1);
     //Can Message to Bamocar for the actual speed
-    attachedCANBus->attach(this, 0x100, 0x000, false);
+    attachedCANBus->attach(this, 0x181, 0xFFF, false);
     
     tickHandler.attach(this, CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR);
 
@@ -69,12 +69,19 @@ void BamocarMotorController::setup() {
     var.buf[0] = 0x3D;
     var.buf[1] = 0x49;
     var.buf[2] = 0x64;
-
     attachedCANBus->sendFrame(var);
+
+    var.buf[0] = 0x3D;
+    var.buf[1] = 0x8f;
+    var.buf[2] = 0xFF;
+    attachedCANBus->sendFrame(var);
+    
     enable_sent = false;
     disable_sent = true;
     last_sent_value = 0;
     mappedMotorTorque = 0;
+
+    errorClear = false;
 }
 
 
@@ -96,13 +103,19 @@ void BamocarMotorController::handleTick() {
 
     
     MotorController::handleTick();
-    if (extern_curr_state == S2){
+    //first clear
+    // if (!errorClear)
+    // {
+    //     var.buf[0] = 0;
+    // }
+
+    // if (extern_curr_state == S2){
         if (throttleRequested < 0) throttleRequested = 0;
         if (throttleRequested > 1000 && throttleRequested < 1300) throttleRequested = 1000;
         if (throttleRequested > 1400) throttleRequested = 0;
 
         throttleAnalogValue = throttleRequested / 10 * 10; // truncating it to the nearest 10th percent
-        if (throttleAnalogValue < 50)
+        if (throttleAnalogValue <= 20)
         {
             throttleAnalogValue = 0;
             if(!disable_sent){
@@ -113,11 +126,25 @@ void BamocarMotorController::handleTick() {
             }
         }
         else{
+
             mappedMotorTorque = throttleAnalogValue/10 * 20;
             uint32_t secondhalf = (mappedMotorTorque & 0xFF);
             uint32_t firsthalf = ((mappedMotorTorque >> 8));
             
             if (!enable_sent){
+                //Transmitting transmission request BTB
+                var.buf[0] = 0x3D;
+                var.buf[1] = 0xE2;
+                var.buf[2] = 0x00;
+                attachedCANBus->sendFrame(var);
+
+                //Transmitting transmission request enable (hardware) refer to can manual
+                var.buf[0] = 0x3D;
+                var.buf[1] = 0xE8;
+                var.buf[2] = 0x00;
+                attachedCANBus->sendFrame(var);
+
+                //Transmitting Disable
                 var.buf[0] = 0x51;
                 var.buf[1] = 0x00;
                 var.buf[2] = 0x00;
@@ -134,17 +161,25 @@ void BamocarMotorController::handleTick() {
                 attachedCANBus->sendFrame(var);
                 last_sent_value = mappedMotorTorque;
             }
-            break;
         }
-    }
+    // }
     
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
-    Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-                      frame.id, frame.len, 
-                      frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-                      frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+    // Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+    //                   frame.id, frame.len, 
+    //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+    //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+    if (frame.buf[0] == 0x8F){
+        if (frame.buf[1] == 0x20){ // mains voltage low, just clear it
+            //this is the command to clear the error list
+            var.buf[0] = 0x8E;
+            var.buf[1] = 0x00;
+            var.buf[2] = 0x00;
+            attachedCANBus->sendFrame(var);
+        }
+    }
 }
 
 void BamocarMotorController::setGear(Gears gear) {

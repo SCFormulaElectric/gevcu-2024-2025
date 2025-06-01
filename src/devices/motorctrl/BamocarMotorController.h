@@ -92,6 +92,7 @@ private:
     bool disable_sent;
     int last_sent_value;
     int mappedMotorTorque;
+    bool errorClear;
 };
 
 #endif /* DMOC_H_ */
