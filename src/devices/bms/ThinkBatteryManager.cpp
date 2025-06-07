@@ -116,6 +116,8 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
                     // Invalid data, discard values
                     return;
                 }
+                Logger::info("CellID: %u | Voltage: %.1f mV | IR: %.2f mOhms | Open Voltage: %.1f mV | Shunting: %s",
+                    cellID, instantVoltage / 10.0, internalResistance / 100.0, openVoltage / 10.0, isShunting ? "Yes" : "No");
             }
             break;
 
@@ -150,8 +152,38 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
                 }
             }
             break;
+        case 0x301: //Custom can message for state of charge
+            {
+                uint8_t soc = frame.buf[0];
+                int16_t current_raw = static_cast<int8_t>(frame.buf[1]); 
+                uint8_t instVolt = frame.buf[2]; 
+                uint8_t openVolt = frame.buf[3]; 
+                uint8_t resistance = frame.buf[4]; 
+                uint8_t checksum = frame.buf[5];
 
+                
+                uint16_t computedChecksum = 0x301 + 6; 
+                for (int i = 0; i < 5; i++) {
+                    computedChecksum += frame.buf[i];
+                }
+                computedChecksum &= 0xFF;
 
+                if ((uint8_t)computedChecksum != checksum) {
+                    
+                    return;
+                }
+
+                
+                float soc_percent = soc; 
+                float current = current_raw / 10.0f; 
+                float instantVoltage = instVolt / 10.0f; 
+                float openVoltage = openVolt / 10.0f;    
+                float packResistance = resistance / 100.0f; 
+
+                Logger::info("Pack SOC: %.1f%% | Current: %.1f A | Inst Voltage: %.1f V | Open Voltage: %.1f V | Resistance: %.2f Ohms",
+                   `         soc_percent, current, instantVoltage, openVoltage, packResistance);
+            }
+            break;
     }
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 2);
 }
