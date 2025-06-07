@@ -84,6 +84,8 @@ private:
     bool fault_throttle_high_b;
     bool fault_throttle_mismatch_ab;
 
+    bool fault_brake_throttle_engaged;
+
     RawSignalData rawSignal;
     MotorController* motorController;
 };

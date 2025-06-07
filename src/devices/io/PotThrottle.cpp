@@ -79,6 +79,7 @@ void PotThrottle::setup() {
     fault_throttle_low_b = false;
     fault_throttle_high_b = false;
     fault_throttle_mismatch_ab = false;
+    fault_brake_throttle_engaged = false;
 
     motorController = deviceManager.getMotorController();
     tickHandler.attach(this, CFG_TICK_INTERVAL_POT_THROTTLE);
@@ -90,6 +91,33 @@ void PotThrottle::setup() {
 void PotThrottle::handleTick() {
     crashHandler.addBreadcrumb(ENCODE_BREAD("PTTHR") + 1);
     Throttle::handleTick(); // Call parent which controls the workflow
+    bool brakeEngaged;
+    if (deviceManager.getBrake()){
+        brakeEngaged = deviceManager.getBrake()->getLevel() > 0;
+    }
+    else{
+        brakeEngaged = false;
+    }
+    bool throttleOver25 = getLevel() > 250;
+    bool throttleUnder5 = getLevel() < 50;
+
+    if (!fault_brake_throttle_engaged && brakeEngaged && throttleOver25) {
+        fault_brake_throttle_engaged = true;
+        Logger::error("Brake engaged while throttle > 25%% — initiating motor shutdown.");
+        motorController->setOpState(1);
+    }
+
+    if (fault_brake_throttle_engaged) {
+        if (throttleUnder5) {
+            Logger::info("Throttle < 5%% — resuming regular operation.");
+            fault_brake_throttle_engaged = false;
+            motorController->setOpState(2);
+        } else {
+            if (motorController->getOpState() != 1) {
+                motorController->setOpState(1);
+            }
+        }
+    }
 }
 
 /*
@@ -249,15 +277,16 @@ int16_t PotThrottle::calculatePedalPosition(RawSignalData *rawSignal) {
     PotThrottleConfiguration *config = (PotThrottleConfiguration *) getConfiguration();
     uint16_t calcThrottle1, calcThrottle2;
 
-    calcThrottle1 = normalizeInput(rawSignal->input1, config->minimumLevel1, config->maximumLevel1);
+    calcThrottle1 = normalizeAndConstrainInput(rawSignal->input1, config->minimumLevel1, config->maximumLevel1);
+    // Logger::console("Calc throttle 1 %d", calcThrottle1);
 
     if (config->numberPotMeters > 1) {
-        calcThrottle2 = normalizeInput(rawSignal->input2, config->minimumLevel2, config->maximumLevel2);
-        if (config->throttleSubType == 2) // inverted
-            calcThrottle2 = 1000 - calcThrottle2;
+        calcThrottle2 = normalizeAndConstrainInput(rawSignal->input2, config->minimumLevel2, config->maximumLevel2);
+        // Logger::console("Calc throttle 2 %d", calcThrottle2);
+
         calcThrottle1 = (calcThrottle1 + calcThrottle2) / 2; // now the average of the two
     }
-
+    // Logger::console("Final level value %d", calcThrottle1);
     return calcThrottle1;
 }
 
@@ -298,8 +327,8 @@ void PotThrottle::loadConfiguration() {
         prefsHandler->read("NumThrottles", &config->numberPotMeters, 2);
         prefsHandler->read("ThrottleType", &config->throttleSubType, 1);
 
-        prefsHandler->read("ADC1", &config->AdcPin1, 1);
-        prefsHandler->read("ADC2", &config->AdcPin2, 0);
+        prefsHandler->read("ADC1", &config->AdcPin1, 0);
+        prefsHandler->read("ADC2", &config->AdcPin2, 5);
 
         // prefsHandler->read("ADC1", &config->AdcPin1, 0);
         // prefsHandler->read("ADC2", &config->AdcPin2, 1);

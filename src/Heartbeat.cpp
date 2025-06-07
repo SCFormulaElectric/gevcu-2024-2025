@@ -105,7 +105,7 @@ void Heartbeat::handleTick() {
         if (brake) {
             Logger::console("Brake Output: %i", brake->getLevel());
             RawSignalData *rawSignal = brake->acquireRawSignal();
-            Logger::console("Brake rawSignal1: %d", rawSignal->input1);
+            Logger::console("Brake rawSignal1: %d, rawSignal2: %d", rawSignal->input1,  rawSignal->input2);
         }
     }
 }

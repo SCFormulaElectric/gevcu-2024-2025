@@ -62,6 +62,10 @@ void PotBrake::setup() {
     cfgEntries.push_back(entry);
     entry = {"B1MX", "Set brake max value", &config->maximumLevel1, CFG_ENTRY_VAR_TYPE::UINT16, 0, 4096, 0, nullptr};
     cfgEntries.push_back(entry);
+    entry = {"B2MN", "Set brake min value", &config->minimumLevel2, CFG_ENTRY_VAR_TYPE::UINT16, 0, 4096, 0, nullptr};
+    cfgEntries.push_back(entry);
+    entry = {"B2MX", "Set brake max value", &config->maximumLevel2, CFG_ENTRY_VAR_TYPE::UINT16, 0, 4096, 0, nullptr};
+    cfgEntries.push_back(entry);
     entry = {"BMINR", "Percent of full torque for start of brake regen", &config->minimumRegen, CFG_ENTRY_VAR_TYPE::BYTE, 0, 100, 0, nullptr};
     cfgEntries.push_back(entry);
     entry = {"BMAXR", "Percent of full torque for maximum brake regen", &config->maximumRegen, CFG_ENTRY_VAR_TYPE::BYTE, 0, 100, 0, nullptr};
@@ -266,22 +270,23 @@ DeviceType PotBrake::getType() {
  * are chosen and the configuration is overwritten in the EEPROM.
  */
 void PotBrake::loadConfiguration() {
-    PotBrakeConfiguration *config = new PotBrakeConfiguration();
-    setConfiguration(config);
-
-    // we deliberately do not load config via parent class here !
-    //818 is 1 volt
-    //if (prefsHandler->checksumValid()) { //checksum is good, read in the values stored in EEPROM
-        prefsHandler->read("BrakeMin", (uint16_t *)&config->minimumLevel1, 409);
-        prefsHandler->read("BrakeMax", (uint16_t *)&config->maximumLevel1, 3681);
-        prefsHandler->read("BrakeMin", (uint16_t *)&config->minimumLevel2, 409);
-        prefsHandler->read("BrakeMax", (uint16_t *)&config->maximumLevel2, 3681);
-        prefsHandler->read("BrakeADC1", &config->AdcPin1, 6);
-        prefsHandler->read("BrakeADC2", &config->AdcPin2, 7);
-        prefsHandler->read("numberPotMeters", (uint16_t *)&config->numberPotMeters, 2);
-        prefsHandler->write("throttleSubType", (uint8_t *)&config->throttleSubType, 1);
-        Logger::debug(POTBRAKEPEDAL, "BRAKE MIN: %i MAX: %i", config->minimumLevel1, config->maximumLevel1);
-        Logger::debug(POTBRAKEPEDAL, "Min: %i MaxRegen: %i", config->minimumRegen, config->maximumRegen);
+    PotBrakeConfiguration *config = (PotBrakeConfiguration *) getConfiguration();
+    if (!config) { // as lowest sub-class make sure we have a config object
+        config = new PotBrakeConfiguration();
+        setConfiguration(config);
+    }
+    //I lost it trying to write to EEPROM so im just doing it directly 6/7/2025 Austin T.
+    config->AdcPin1 = 6;
+    config->AdcPin2 = 7;
+    config->minimumLevel1 = 400;
+    config->maximumLevel1 = 3681;
+    config->minimumLevel2 = 400;
+    config->maximumLevel2 = 3681;
+    config->numberPotMeters = 2;
+    config->throttleSubType = 1;
+    Logger::debug(POTBRAKEPEDAL, "BRAKE MIN: %i MAX: %i", config->minimumLevel1, config->maximumLevel1);
+    Logger::debug(POTBRAKEPEDAL, "Min: %i MaxRegen: %i", config->minimumRegen, config->maximumRegen);
+    Logger::debug(POTBRAKEPEDAL, "Pin1 : %d Pin2: %d", config->AdcPin1, config->AdcPin2);
 }
 
 /*
@@ -290,13 +295,14 @@ void PotBrake::loadConfiguration() {
 void PotBrake::saveConfiguration() {
     PotBrakeConfiguration *config = (PotBrakeConfiguration *) getConfiguration();
 
-    // we deliberately do not save config via parent class here !
-
-    prefsHandler->write("BrakeMin", (uint16_t)config->minimumLevel1);
-    prefsHandler->write("BrakeMax", (uint16_t)config->maximumLevel1);
+    prefsHandler->write("BrakeMin1", (uint16_t)config->minimumLevel1);
+    prefsHandler->write("BrakeMax1", (uint16_t)config->maximumLevel1);
+    prefsHandler->write("BrakeMax2", (uint16_t)config->maximumLevel2);
+    prefsHandler->write("BrakeMax2", (uint16_t)config->maximumLevel2);
     prefsHandler->write("BrakeMaxRegen", config->maximumRegen);
     prefsHandler->write("BrakeMinRegen", config->minimumRegen);
-    prefsHandler->write("BrakeADC", config->AdcPin1);
+    prefsHandler->write("BrakeADC1", config->AdcPin1);
+    prefsHandler->write("BrakeADC2", config->AdcPin2);
     prefsHandler->saveChecksum();
     prefsHandler->forceCacheWrite();
 }
