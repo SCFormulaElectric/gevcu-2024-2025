@@ -39,7 +39,7 @@
 
 #define POTACCELPEDAL 0x1031
 #define THROTTLE_INPUT_BRAKELIGHT  2
-#define CFG_TICK_INTERVAL_POT_THROTTLE              120000
+#define CFG_TICK_INTERVAL_POT_THROTTLE              40000
 
 /*
  * The extended configuration class with additional parameters for PotThrottle
@@ -78,7 +78,9 @@ protected:
     int16_t calculatePedalPosition(RawSignalData *);
 
 private:
+    uint16_t throttle_faulted;
     RawSignalData rawSignal;
+    MotorController* motorController;
 };
 
 #endif /* POT_THROTTLE_H_ */

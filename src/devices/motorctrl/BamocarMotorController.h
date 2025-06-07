@@ -80,7 +80,7 @@ public:
 
     virtual void loadConfiguration();
     virtual void saveConfiguration();
-
+    void setOpState(OperationState op) override;
 private:
 
     uint16_t torqueCommand;

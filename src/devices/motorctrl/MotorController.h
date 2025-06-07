@@ -140,7 +140,7 @@ public:
 
     void setPowerMode(PowerMode mode);
     PowerMode getPowerMode();
-    void setOpState(OperationState op) ;
+    virtual void setOpState(OperationState op) ;
     OperationState getOpState() ;
     void setSelectedGear(Gears gear);
     Gears getSelectedGear();

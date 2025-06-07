@@ -66,7 +66,6 @@ void StatemachineDevice::setup() {
     Device::setup(); // run the parent class version of this function
 
     setAttachedCANBus(1);
-    //Relevant BMS messages are 0x300 - 0x30F
     attachedCANBus->attach(this, 0x310, 0x000, false);
     tickHandler.attach(this, StatemachineTickInt);
     // set flags
@@ -77,7 +76,7 @@ void StatemachineDevice::setup() {
     buzz_msg.len = 2;
     buzz_msg.id = 0x109;
     buzz_msg.buf[0] = 0x1;
-    buzz_msg.buf[1] = 2;
+    buzz_msg.buf[1] = 0x02;
 
     /*
       buzz_msg[0] : a value to say hey buzz it up
@@ -149,7 +148,6 @@ void StatemachineDevice::handleTick() {
   else {
     threshold_brake = false;
   }
-  // threshold_brake = true;
   if (extern_curr_state == S0) {        // state 0, this is tested
     if(threshold_brake && tsms && r2d){
       updateState(S1);
@@ -169,13 +167,14 @@ void StatemachineDevice::handleTick() {
     }
     if (tsms && dash_val_msg) {
       updateState(S2);
-    } else {
+    }
+    else if (!tsms){
       updateState(S0);
     }
 
     counter_timer++;
     Logger::console("counter: %d", counter_timer);
-    if (counter_timer > 20){
+    if (counter_timer > 10){
       dash_send_flag = 1;
       counter_timer = 0;
       buzz_msg.buf[1] = 2; // if you have to resend the signal, in state 2

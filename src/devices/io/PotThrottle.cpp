@@ -74,7 +74,8 @@ void PotThrottle::setup() {
 
     //set digital ports to inputs and pull them up all inputs currently active low
     //pinMode(THROTTLE_INPUT_BRAKELIGHT, INPUT_PULLUP); //Brake light switch
-
+    throttle_faulted = 0;
+    motorController = deviceManager.getMotorController();
     tickHandler.attach(this, CFG_TICK_INTERVAL_POT_THROTTLE);
 }
 
@@ -106,24 +107,26 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
     int32_t calcThrottle1, calcThrottle2;
     
     calcThrottle1 = normalizeInput(rawSignal->input1, config->minimumLevel1, config->maximumLevel1 );
-    //Logger::console("Value is %d", calcThrottle1);
-    if (config->numberPotMeters == 1 && config->throttleSubType == 2) { // inverted
-        calcThrottle1 = 1000 - calcThrottle1;
-    }
-
-
     if (calcThrottle1 > (1000 + CFG_THROTTLE_TOLERANCE))
     {
         if (status == OK)
             Logger::error(POTACCELPEDAL, "ERR_HIGH_T1: throttle 1 value out of range: %i", calcThrottle1);
         status = ERR_HIGH_T1;
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A, true);
+        if (throttle_faulted == 1){
+            motorController->setOpState(1);
+        }
+        else{
+            throttle_faulted = 1;
+        }
         return false;
     }
     else
     {
         if (calcThrottle1 > 1000) calcThrottle1 = 1000;
         faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A);
+        throttle_faulted = 0;
+        motorController->setOpState(2);
     }
 
     if (calcThrottle1 < (0 - CFG_THROTTLE_TOLERANCE)) {
@@ -131,12 +134,20 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             Logger::error(POTACCELPEDAL, "ERR_LOW_T1: throttle 1 value out of range: %i ", calcThrottle1);
         status = ERR_LOW_T1;
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A, true);
+        if (throttle_faulted == 1){
+            motorController->setOpState(1);
+        }
+        else{
+            throttle_faulted = 1;
+        }
         return false;
     }
     else
     {
         if (calcThrottle1 < 0) calcThrottle1 = 0;
         faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A);
+        throttle_faulted = 0;
+        motorController->setOpState(2);
     }
 
     if (config->numberPotMeters > 1) {
@@ -147,25 +158,41 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                 Logger::error(POTACCELPEDAL, "ERR_HIGH_T2: throttle 2 value out of range: %i", calcThrottle2);
             status = ERR_HIGH_T2;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B, true);
+            if (throttle_faulted == 1){
+                motorController->setOpState(1);
+            }
+            else{
+                throttle_faulted = 1;
+            }
             return false;
         }
         else
         {
             if (calcThrottle2 > 1000) calcThrottle2 = 1000;
             faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B);
+            throttle_faulted = 0;
+            motorController->setOpState(2);
         }
 
         if (calcThrottle2 < (0 - CFG_THROTTLE_TOLERANCE)) {
             if (status == OK)
                 Logger::error(POTACCELPEDAL, "ERR_LOW_T2: throttle 2 value out of range: %i", calcThrottle2);
             status = ERR_LOW_T2;
-            faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B);
+            faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B, true);
+            if (throttle_faulted == 1){
+                motorController->setOpState(1);
+            }
+            else{
+                throttle_faulted = 1;
+            }
             return false;
         }
         else
         {
             if (calcThrottle2 < 0) calcThrottle2 = 0;
             faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B);
+            throttle_faulted = 0;
+            motorController->setOpState(2);
         }
 
         if (config->throttleSubType == 2) {
@@ -176,11 +203,19 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                                   calcThrottle1, calcThrottle2, ThrottleMaxErrValue);
                 status = ERR_MISMATCH;
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
+                if (throttle_faulted == 1){
+                    motorController->setOpState(1);
+                }
+                else{
+                    throttle_faulted = 1;
+                }
                 return false;
             }
             else
             {
                 faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB);
+                throttle_faulted = 0;
+                motorController->setOpState(2);
             }
         } else {
             if ((calcThrottle1 - ThrottleMaxErrValue) > calcThrottle2) { //then throttle1 is too large compared to 2
@@ -188,6 +223,12 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                     Logger::error(POTACCELPEDAL, "throttle 1 too high (%i) compared to 2 (%i)", calcThrottle1, calcThrottle2);
                 status = ERR_MISMATCH;
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
+                if (throttle_faulted == 1){
+                    motorController->setOpState(1);
+                }
+                else{
+                    throttle_faulted = 1;
+                }
                 return false;
             }
             else if ((calcThrottle2 - ThrottleMaxErrValue) > calcThrottle1) { //then throttle2 is too large compared to 1
@@ -195,11 +236,19 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                     Logger::error(POTACCELPEDAL, "throttle 2 too high (%i) compared to 1 (%i)", calcThrottle2, calcThrottle1);
                 status = ERR_MISMATCH;
                 faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
+                if (throttle_faulted == 1){
+                    motorController->setOpState(1);
+                }
+                else{
+                    throttle_faulted = 1;
+                }
                 return false;
             }
             else
             {
                 faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB);
+                throttle_faulted = 0;
+                motorController->setOpState(2);
             }
         }
     }
@@ -228,12 +277,6 @@ int16_t PotThrottle::calculatePedalPosition(RawSignalData *rawSignal) {
         calcThrottle1 = (calcThrottle1 + calcThrottle2) / 2; // now the average of the two
     }
 
-    // int a = (calcThrottle1/10);
-    // uint32_t firsthalf = (a & 0xFF);
-    // uint32_t secondhalf = ((a >> 8) & 0xFF);
-    
-    
-    
     return calcThrottle1;
 }
 
@@ -263,10 +306,6 @@ void PotThrottle::loadConfiguration() {
     //if (prefsHandler->checksumValid()) { //checksum is good, read in the values stored in EEPROM
         Logger::debug(POTACCELPEDAL, Constants::validChecksum);
         prefsHandler->read("ThrottleMin1", (uint16_t *)&config->minimumLevel1, 0);
-        //figure out this number --> 3150
-        //3150 milivolts -->  
-
-        //1 volt around 818
 
         //5 volts = 818 when max is 5000
         //5 volts = 1000 when max is 4090
@@ -278,7 +317,6 @@ void PotThrottle::loadConfiguration() {
         prefsHandler->read("NumThrottles", &config->numberPotMeters, 2);
         prefsHandler->read("ThrottleType", &config->throttleSubType, 1);
 
-        // switched the pins in acorrdance with harness - 4/7/25
         prefsHandler->read("ADC1", &config->AdcPin1, 1);
         prefsHandler->read("ADC2", &config->AdcPin2, 0);
 

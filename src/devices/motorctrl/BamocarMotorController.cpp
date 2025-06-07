@@ -30,7 +30,7 @@ void BamocarMotorController::setup() {
     running = true;
     setPowerMode(modeTorque);
     setSelectedGear(DRIVE);
-    setOpState(ENABLE);
+    setOpState(STANDBY);
 
     setAttachedCANBus(1);
     //Can Message to Bamocar for the actual speed
@@ -88,81 +88,64 @@ void BamocarMotorController::setup() {
 
 void BamocarMotorController::handleTick() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
-    //if the brake is pressed beyond a certain point set the speed back down to 0
-    //if the brake is pressed also send a speed signal but lower than the current speed
-    //if the throttle is released a little then the speed should still be similar, not immediately down to 0
-    //max press accelerate max 
-    //make it as close to a regular car
-    //brakes regular car as well
-    //willl never really have a cruising speed
-    //linear
-    //max push max acceleration
-
-    //CONFIGURATIONS FOR THE MOTORCONTROLLER
-    //CONFIGURATIONS FOR THE MOTORCONTROLLER
-
-    
     MotorController::handleTick();
-    //first clear
-    // if (!errorClear)
-    // {
-    //     var.buf[0] = 0;
-    // }
+    
+    if (extern_curr_state == S2){
+        if (getOpState() == ENABLE){
+            if (throttleRequested < 0) throttleRequested = 0;
+            if (throttleRequested > 1000 && throttleRequested < 1300) throttleRequested = 1000;
+            if (throttleRequested > 1400) throttleRequested = 0;
 
-    // if (extern_curr_state == S2){
-        if (throttleRequested < 0) throttleRequested = 0;
-        if (throttleRequested > 1000 && throttleRequested < 1300) throttleRequested = 1000;
-        if (throttleRequested > 1400) throttleRequested = 0;
-
-        throttleAnalogValue = throttleRequested / 10 * 10; // truncating it to the nearest 10th percent
-        if (throttleAnalogValue <= 20)
-        {
-            throttleAnalogValue = 0;
-            if(!disable_sent){
-                attachedCANBus -> sendFrame(freeRolling);
-                last_sent_value = 0;
-                disable_sent = true;
-                enable_sent = false;
-            }
-        }
-        else{
-
-            mappedMotorTorque = throttleAnalogValue/10 * 20;
-            uint32_t secondhalf = (mappedMotorTorque & 0xFF);
-            uint32_t firsthalf = ((mappedMotorTorque >> 8));
-            
-            if (!enable_sent){
-                //Transmitting transmission request BTB
-                var.buf[0] = 0x3D;
-                var.buf[1] = 0xE2;
-                var.buf[2] = 0x00;
-                attachedCANBus->sendFrame(var);
-
-                //Transmitting transmission request enable (hardware) refer to can manual
-                var.buf[0] = 0x3D;
-                var.buf[1] = 0xE8;
-                var.buf[2] = 0x00;
-                attachedCANBus->sendFrame(var);
-
-                //Transmitting Disable
-                var.buf[0] = 0x51;
-                var.buf[1] = 0x00;
-                var.buf[2] = 0x00;
-                attachedCANBus->sendFrame(var);
-                disable_sent = false;
-                enable_sent = true;
-
-            }
-            else if (last_sent_value != mappedMotorTorque) //0x31 for speed, 0x90 for torque
+            throttleAnalogValue = throttleRequested / 10 * 10; // truncating it to the nearest 10th percent
+            if (throttleAnalogValue <= 20)
             {
-                var.buf[0] = 0x90;
-                var.buf[1] = secondhalf;
-                var.buf[2] = firsthalf; 
-                attachedCANBus->sendFrame(var);
-                last_sent_value = mappedMotorTorque;
+                throttleAnalogValue = 0;
+                if(!disable_sent){
+                    attachedCANBus -> sendFrame(freeRolling);
+                    last_sent_value = 0;
+                    disable_sent = true;
+                    enable_sent = false;
+                }
+            }
+            else{
+
+                mappedMotorTorque = throttleAnalogValue/10 * 20;
+                uint32_t secondhalf = (mappedMotorTorque & 0xFF);
+                uint32_t firsthalf = ((mappedMotorTorque >> 8));
+                
+                if (!enable_sent){
+                    //Transmitting transmission request BTB
+                    var.buf[0] = 0x3D;
+                    var.buf[1] = 0xE2;
+                    var.buf[2] = 0x00;
+                    attachedCANBus->sendFrame(var);
+
+                    //Transmitting transmission request enable (hardware) refer to can manual
+                    var.buf[0] = 0x3D;
+                    var.buf[1] = 0xE8;
+                    var.buf[2] = 0x00;
+                    attachedCANBus->sendFrame(var);
+
+                    //Transmitting Disable
+                    var.buf[0] = 0x51;
+                    var.buf[1] = 0x00;
+                    var.buf[2] = 0x00;
+                    attachedCANBus->sendFrame(var);
+                    disable_sent = false;
+                    enable_sent = true;
+
+                }
+                else if (last_sent_value != mappedMotorTorque) //0x31 for speed, 0x90 for torque
+                {
+                    var.buf[0] = 0x90;
+                    var.buf[1] = secondhalf;
+                    var.buf[2] = firsthalf; 
+                    attachedCANBus->sendFrame(var);
+                    last_sent_value = mappedMotorTorque;
+                }
             }
         }
-    // }
+    }
     
 }
 
@@ -184,13 +167,15 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
 
 void BamocarMotorController::setGear(Gears gear) {
     selectedGear = gear;
-    //if the gear was just set to drive or reverse and the DMOC is not currently in enabled
-    //op state then ask for it by name
-    if (selectedGear != NEUTRAL) {
-        operationState = ENABLE;
+}
+
+void BamocarMotorController::setOpState(OperationState op){
+    if (op == STANDBY){
+        attachedCANBus -> sendFrame(freeRolling);
+        last_sent_value = 0;
+        disable_sent = true;
+        enable_sent = false;
     }
-    //should it be set to standby when selecting neutral? I don't know. Doing that prevents regen
-    //when in neutral and I don't think people will like that.
 }
 
 DeviceId BamocarMotorController::getId() {
