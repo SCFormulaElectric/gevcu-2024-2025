@@ -170,12 +170,18 @@ void BamocarMotorController::setGear(Gears gear) {
 }
 
 void BamocarMotorController::setOpState(OperationState op){
-    if (op == STANDBY){
-        attachedCANBus -> sendFrame(freeRolling);
+    OperationState prevOpState = getOpState();
+    MotorController::setOpState(op);
+
+    if (op == STANDBY && prevOpState != STANDBY){
+        Logger::console("Transitioning to STANDBY from %d", prevOpState);
+        attachedCANBus->sendFrame(freeRolling);
         last_sent_value = 0;
         disable_sent = true;
         enable_sent = false;
     }
+
+    Logger::console("Current OpState: %d", getOpState());
 }
 
 DeviceId BamocarMotorController::getId() {

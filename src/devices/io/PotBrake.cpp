@@ -96,37 +96,11 @@ RawSignalData *PotBrake::acquireRawSignal() {
 /*
  * Perform sanity check on the ADC input values.
  */
-// bool PotBrake::validateSignal(RawSignalData *rawSignal) {
-//     PotBrakeConfiguration *config = (PotBrakeConfiguration *) getConfiguration();
-
-//     if (rawSignal->input1 > (config->maximumLevel1 + CFG_BRAKE_TOLERANCE)) {
-//         if (status == OK)
-//             Logger::error(POTBRAKEPEDAL, (char *)Constants::valueOutOfRange, rawSignal->input1);
-//         status = ERR_HIGH_T1;
-//         return true; // even if it's too high, let it process and apply full regen !
-//     }
-//     if (rawSignal->input1 < (config->minimumLevel1 - CFG_BRAKE_TOLERANCE)) {
-//         if (status == OK)
-//             Logger::error(POTBRAKEPEDAL, (char *)Constants::valueOutOfRange, rawSignal->input1);
-//         status = ERR_LOW_T1;
-//         return false;
-//     }
-
-//     // all checks passed -> brake is OK
-//     if (status != OK)
-//         Logger::info(POTBRAKEPEDAL, (char *)Constants::normalOperation);
-//     status = OK;
-//     return true;
-// }
-
 bool PotBrake::validateSignal(RawSignalData *rawSignal) {
     PotThrottleConfiguration *config = (PotThrottleConfiguration *) getConfiguration();
     int32_t calcBrake1, calcBrake2;
     
     calcBrake1 = normalizeInput(rawSignal->input1, config->minimumLevel1, config->maximumLevel1 );
-    Logger::console("Value is %d", calcBrake1);
-    Logger::console("Value of 2 is %d", calcBrake2);
-
     if (calcBrake1 > (1000 + CFG_BRAKE_TOLERANCE)) // <-- Q, what is the break tolerance, define in .h
     {
         if (status == OK)

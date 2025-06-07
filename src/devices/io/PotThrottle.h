@@ -78,7 +78,12 @@ protected:
     int16_t calculatePedalPosition(RawSignalData *);
 
 private:
-    uint16_t throttle_faulted;
+    bool fault_throttle_low_a;
+    bool fault_throttle_high_a;
+    bool fault_throttle_low_b;
+    bool fault_throttle_high_b;
+    bool fault_throttle_mismatch_ab;
+
     RawSignalData rawSignal;
     MotorController* motorController;
 };
