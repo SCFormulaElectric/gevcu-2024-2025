@@ -57,13 +57,10 @@ void ThinkBatteryManager::setup() {
     entry = {"THINK-CANBUS", "Set which CAN bus to connect to (0-2)", &config->canbusNum, CFG_ENTRY_VAR_TYPE::BYTE, 0, 2, 0, nullptr};
     cfgEntries.push_back(entry);
 
-    setAttachedCANBus(config->canbusNum);
+    setAttachedCANBus(1);
 
     //We will specify the broadcast message for the BMS can frame through the orion BMS software
     attachedCANBus->attach(this, 0x300, 0x7f0, false);
-
-    tickHandler.attach(this, CFG_TICK_INTERVAL_BMS_THINK);
-    crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 0);
 }
 
 /*For all multibyte integers the format is MSB first, LSB last
@@ -91,99 +88,52 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
 
         If the computed checksum does not equal the provided checksum, the values should be discarded.
      */
-    int temp;
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 1);
-    //TODO figure out why this is here!
-    canHandlerBus0.process(frame);
+    // https://www.orionbms.com/manuals/utility_o2/ where we got these values from.
     switch (frame.id) {
-        case 0x308: // Cell Data
+        case 0x301:
             {
-                uint8_t cellID = frame.buf[0];
-                uint16_t instantVoltage = (frame.buf[1] << 8) | frame.buf[2]; // 0.1mV unit
-                uint16_t internalResistance = ((frame.buf[3] & 0x7F) << 8) | frame.buf[4]; // 0.01mOhm unit
-                uint16_t openVoltage = (frame.buf[5] << 8) | frame.buf[6]; // 0.1mV unit
-                bool isShunting = (frame.buf[3] & 0x80) != 0; // Bit 8 in byte 3
+                uint16_t pack_current = (frame.buf[0] << 8) | frame.buf[1];
+                uint16_t pack_instant_volt = (frame.buf[2] << 8) | frame.buf[3];
+                uint8_t pack_soc = frame.buf[4];
+                uint16_t pack_open_volt = (frame.buf[5] << 8) | frame.buf[6]; 
 
-                // Checksum verification
-                uint8_t checksum = frame.buf[7];
-                uint16_t computedChecksum = frame.id + 8; // Step 1
-                for (int i = 0; i < 7; i++) {
-                    computedChecksum += frame.buf[i]; // Step 2
-                }
-                computedChecksum &= 0xFF; // Step 3 - Keep only the least significant 8 bits
-
-                if ((uint8_t)computedChecksum != checksum) {
-                    // Invalid data, discard values
-                    return;
-                }
-                Logger::info("CellID: %u | Voltage: %.1f mV | IR: %.2f mOhms | Open Voltage: %.1f mV | Shunting: %s",
-                    cellID, instantVoltage / 10.0, internalResistance / 100.0, openVoltage / 10.0, isShunting ? "Yes" : "No");
+                Logger::info("Pack Current: %.1f A, Instant Voltage: %.1f V, Open Voltage: %.1f V, SOC: %u%%",
+                                pack_current / 10.0, pack_instant_volt / 10.0, pack_open_volt / 10.0, pack_soc/2.0);
             }
             break;
-
-        case 0x309: // Fault Data
+        case 0x302:
             {
-                uint8_t checksum = frame.buf[7];
-                uint16_t computedChecksum = frame.id + 8; // Step 1
-                for (int i = 0; i < 7; i++) {
-                    computedChecksum += frame.buf[i]; // Step 2
-                }
-                computedChecksum &= 0xFF; // Step 3
+                uint16_t pack_resistance = (frame.buf[2] << 8) | frame.buf[3];
+                uint8_t high_temp = frame.buf[4];
+                uint8_t low_temp = frame.buf[5];
+                Logger::info("Pack Resistance: %.3f Ω, High Temp: %.1f°C, Low Temp: %.1f°C", 
+                                pack_resistance / 1000.0, high_temp * 1.0, low_temp * 1.0);
 
-                if ((uint8_t)computedChecksum != checksum) {
-                    Logger::error("BMS Fault Data: Checksum mismatch!");
-                    return;
-                }
-
-                // Extract the 32-bit fault register (assuming the fault register is in the first 4 bytes)
-                uint32_t faultRegister = (frame.buf[0] << 24) | (frame.buf[1] << 16) | (frame.buf[2] << 8) | frame.buf[3];
-
-                Logger::info("BMS Fault Codes:");
-
-                // Iterate over the faultCodeMap to check which bits are set
-                for (const auto &fault : faultCodeMap) {
-                    uint32_t faultMask = fault.first;  // Fault bit mask (e.g., 0x80000000 for P0AA1)
-                    
-                    // If the corresponding fault bit is set in the faultRegister
-                    if (faultRegister & faultMask) {
-                        // Output the fault code and description
-                        Logger::info("  Fault Code: %s (%s)", fault.second.first.c_str(), fault.second.second.c_str());
-                    }
-                }
             }
             break;
-        case 0x301: //Custom can message for state of charge
-            {
-                uint8_t soc = frame.buf[0];
-                int16_t current_raw = static_cast<int8_t>(frame.buf[1]); 
-                uint8_t instVolt = frame.buf[2]; 
-                uint8_t openVolt = frame.buf[3]; 
-                uint8_t resistance = frame.buf[4]; 
-                uint8_t checksum = frame.buf[5];
-
-                
-                uint16_t computedChecksum = 0x301 + 6; 
-                for (int i = 0; i < 5; i++) {
-                    computedChecksum += frame.buf[i];
-                }
-                computedChecksum &= 0xFF;
-
-                if ((uint8_t)computedChecksum != checksum) {
-                    
-                    return;
-                }
-
-                
-                float soc_percent = soc; 
-                float current = current_raw / 10.0f; 
-                float instantVoltage = instVolt / 10.0f; 
-                float openVoltage = openVolt / 10.0f;    
-                float packResistance = resistance / 100.0f; 
-
-                Logger::info("Pack SOC: %.1f%% | Current: %.1f A | Inst Voltage: %.1f V | Open Voltage: %.1f V | Resistance: %.2f Ohms",
-                   `         soc_percent, current, instantVoltage, openVoltage, packResistance);
+        case 0x303:
+        {
+            uint8_t checksum = frame.buf[7];
+            uint16_t computedChecksum = frame.id + 8;
+            for (int i = 0; i < 7; i++) {
+                computedChecksum += frame.buf[i];
             }
-            break;
+            computedChecksum &= 0xFF;
+            if ((uint8_t)computedChecksum != checksum) {
+                Logger::error("BMS Fault Data: Checksum mismatch!");
+                return;
+            }
+            uint32_t faultRegister = (frame.buf[0] << 24) | (frame.buf[1] << 16) | (frame.buf[2] << 8) | frame.buf[3];
+            Logger::info("BMS Fault Codes:");
+            for (const auto &fault : faultCodeMap) {
+                uint32_t faultMask = fault.first;
+                if (faultRegister & faultMask) {
+                    Logger::error("  Fault Code: %s (%s)", fault.second.first.c_str(), fault.second.second.c_str());
+                }
+            }
+        }
+        break;
     }
     crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 2);
 }
