@@ -85,7 +85,7 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
                 uint16_t pack_resistance = (frame.buf[2] << 8) | frame.buf[3];
                 uint8_t high_temp = frame.buf[4];
                 uint8_t low_temp = frame.buf[5];
-                Logger::info("Pack Resistance: %.3f Ω, High Temp: %.1f°C, Low Temp: %.1f°C", 
+                Logger::info("Pack Resistance: %.3f ohms, High Temp: %.1fC, Low Temp: %.1fC", 
                                 pack_resistance / 1000.0, high_temp * 1.0, low_temp * 1.0);
 
             }
@@ -118,25 +118,12 @@ void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
 
 void ThinkBatteryManager::handleTick() {
     BatteryManager::handleTick(); //kick the ball up to papa
-
-    sendKeepAlive();
-
 }
 
 //Contactors in pack will close if we sent these two frames with all zeros.
 void ThinkBatteryManager::sendKeepAlive()
 {
-    CAN_message_t output;
-    output.len = 3;
-    output.id = 0x310;
-    output.flags.extended = 0; //standard frame
-    for (int i = 0; i < 8; i++) output.buf[i] = 0;
-    attachedCANBus->sendFrame(output);
-
-    output.id = 0x311;
-    output.len = 2;
-    attachedCANBus->sendFrame(output);
-    crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 3);
+    
 }
 
 DeviceId ThinkBatteryManager::getId()
