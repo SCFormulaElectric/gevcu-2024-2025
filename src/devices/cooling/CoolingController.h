@@ -82,7 +82,7 @@ public:
     void calculateFlowRate();
     double thermistorToCelsius(const double reading) const;
 
-    int decode_hex(const int64_t first_half, const int64_t second_half) const;
+    uint16_t decode_hex(const uint8_t first_half, const uint8_t second_half) const;
 
     int32_t normalizeInput(int32_t input, int32_t min, int32_t max);
 
@@ -102,7 +102,8 @@ private:
     // float calibrationFactor;
     // uint32_t tickInterval;
     // bool lastDigitalInputState; 
-
+    int16_t motorToCelsius(uint16_t reading) const;
+    int16_t motorControllerToCelsius(uint16_t reading) const;
     int MAX_MOTOR_TEMP;
     int MAX_MOTOR_CTRL_TEMP;
     int speed;
