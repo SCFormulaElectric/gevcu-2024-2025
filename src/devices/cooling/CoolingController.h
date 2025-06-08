@@ -38,32 +38,34 @@
 #include "../../FaultCodes.h"
 
 #define COOLCONTROL 0x3210
-#define CFG_TICK_INTERVAL_COOLCONTROL     200000
+#define CFG_TICK_INTERVAL_COOLCONTROL     5'000'000 //5 seconds
 
 
 class CoolingControllerConfiguration: public DeviceConfiguration {
 public:
     //I/O pins
-    uint8_t fanAccumulatorPin;
-    uint8_t fanMotorPin;
-    uint8_t waterAccumulatorPin;
+    // uint8_t fanAccumulatorPin;
+    // uint8_t fanMotorPin;
+    // uint8_t waterAccumulatorPin;
     uint8_t waterMotorPin;
+    uint8_t radiatorFanPin;
     uint8_t accumulatorTemperatureSensorPin;
     uint8_t motorTemperatureSensorPin;
+    // uint8_t flowSensorPin;
 
-    float motorPumpOnTemperature;
-    float motorPumpOffTempearture;
-    float accumulatorPumpOnTemperature;
-    float accumulatorPumpOffTemperature;
+    // float motorPumpOnTemperature;
+    // float motorPumpOffTempearture;
+    // float accumulatorPumpOnTemperature;
+    // float accumulatorPumpOffTemperature;
 
 
-    float motorFanOnTemperature;
-    float motorFanOffTemperature;
-    float accumulatorFanOnTemperature;
-    float accumulatorFanOffTemperature;
+    // float motorFanOnTemperature;
+    // float motorFanOffTemperature;
+    // float accumulatorFanOnTemperature;
+    // float accumulatorFanOffTemperature;
 };
 
-class CoolingController: public Device {
+class CoolingController: public Device, CanObserver {
 public:
     CoolingController();
     void setup();
@@ -74,14 +76,40 @@ public:
 
     void loadConfiguration();
     void saveConfiguration();
+    void handleCanFrame(const CAN_message_t &frame);
+
+    void resetPulseCount();
+    void calculateFlowRate();
+    double thermistorToCelsius(const double reading) const;
+
+    uint16_t decode_hex(const uint8_t first_half, const uint8_t second_half) const;
+
+    int32_t normalizeInput(int32_t input, int32_t min, int32_t max);
+
 
 protected:
 
 private:
-    bool isAccumulatorPumpOn;
-    bool isMotorPumpOn;
-    bool isAccumulatorFanOn;
-    bool isMotorFanOn;
+    // bool isAccumulatorPumpOn;
+    // bool isMotorPumpOn;
+    // bool isAccumulatorFanOn;
+    // bool isMotorFanOn;
+
+    // int  pulseCount;
+    // uint32_t lastTickTime;
+    // float flowRate;
+    // int threshold; 
+    // float calibrationFactor;
+    // uint32_t tickInterval;
+    // bool lastDigitalInputState; 
+    int16_t motorToCelsius(uint16_t reading) const;
+    int16_t motorControllerToCelsius(uint16_t reading) const;
+    int MAX_MOTOR_TEMP;
+    int MAX_MOTOR_CTRL_TEMP;
+    int speed;
+    int16_t motor_temp_percentage;
+    int16_t motor_ctrl_temp_percentage;
+    MotorController* motorController;
 };
 
 #endif

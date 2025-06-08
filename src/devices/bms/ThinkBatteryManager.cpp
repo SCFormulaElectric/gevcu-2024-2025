@@ -66,7 +66,7 @@ void ThinkBatteryManager::setup() {
 /*For all multibyte integers the format is MSB first, LSB last
 */
 void ThinkBatteryManager::handleCanFrame(const CAN_message_t &frame) {
-        crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 1);
+    crashHandler.addBreadcrumb(ENCODE_BREAD("THBMS") + 1);
     // https://www.orionbms.com/manuals/utility_o2/ where we got these values from.
     switch (frame.id) {
         case 0x301:

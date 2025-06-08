@@ -34,11 +34,6 @@ CoolingController::CoolingController() : Device() {
     commonName = "Cooling Controller";
     shortName = "CoolingController"; 
 
-    isAccumulatorPumpOn = false;
-    isMotorPumpOn = false;
-    isAccumulatorFanOn = false;
-    isMotorFanOn = false;
-
 }
 
 void CoolingController::earlyInit()
@@ -52,6 +47,8 @@ void CoolingController::earlyInit()
 void CoolingController::setup() {
     crashHandler.addBreadcrumb(ENCODE_BREAD("COOLING") + 0);
     tickHandler.detach(this); // unregister from TickHandler first
+    setAttachedCANBus(1);
+    attachedCANBus->attach(this, 0x181, 0xFFF, false);
 
     Logger::info("add device: CoolingController (id: %X, %X)", COOLCONTROL, this);
 
@@ -63,19 +60,33 @@ void CoolingController::setup() {
 
     StatusEntry stat;// Values that should not be changed to the outside world
 
+    
 
-    stat = {"COOLING_AccumulatorFanOn", &isAccumulatorFanOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
-    deviceManager.addStatusEntry(stat);
-    stat = {"COOLING_AccumulatorPumpOn", &isAccumulatorPumpOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
-    deviceManager.addStatusEntry(stat);
-    stat = {"COOLING_MotorPummpOn", &isMotorPumpOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
-    deviceManager.addStatusEntry(stat);    
-    stat = {"COOLING_MotorFanOn", &isMotorFanOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
-    deviceManager.addStatusEntry(stat);    
+    // stat = {"COOLING_AccumulatorFanOn", &isAccumulatorFanOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
+    // deviceManager.addStatusEntry(stat);
+    // stat = {"COOLING_AccumulatorPumpOn", &isAccumulatorPumpOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
+    // deviceManager.addStatusEntry(stat);
+    // stat = {"COOLING_MotorPummpOn", &isMotorPumpOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
+    // deviceManager.addStatusEntry(stat);    
+    // stat = {"COOLING_MotorFanOn", &isMotorFanOn, CFG_ENTRY_VAR_TYPE::BYTE, 0, this};
+    // deviceManager.addStatusEntry(stat);    
 
     tickHandler.attach(this, CFG_TICK_INTERVAL_COOLCONTROL);
+    MAX_MOTOR_TEMP = 45;
+    MAX_MOTOR_CTRL_TEMP = 70;
+    motor_temp_percentage = 0;
+    motor_ctrl_temp_percentage = 0;
+    speed = 0;
+    motorController = deviceManager.getMotorController();
+
+    //Since the pump and fan are active low they should be set to false to turn on 
+    systemIO.setDigitalOutput(config->waterMotorPin,false);
+    systemIO.setDigitalOutput(config->radiatorFanPin,false);
 }
 
+/*
+    Convert resistance to temperature.
+*/
 double evaluateExpression(double x) {
     double exponent = -1.11 * pow(10, -4) * x;
     double result = 76.9 * exp(exponent);
@@ -91,39 +102,60 @@ void CoolingController::handleTick() {
     Device::handleTick(); // Call parent which controls the workflow
     Logger::avalanche("Cooling Controller Tick Handler");
 
+
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
 
     // Retrieve the temperature of the motor and the accumulator
-    double motorTemperatureAnalogReading = .5;
-    motorTemperatureAnalogReading = motorTemperatureAnalogReading + .1;
-    double accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
+    // Logger::console("Print real Analogreading : %d", motorTemperatureAnalogReading);
+    //int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    double convertedVoltage = (motorTemperatureAnalogReading / 818.0);
+    // Logger::console("Voltage reading : %f", convertedVoltage);
+    double before_radiator_resistance = (14666 * convertedVoltage) / (5 - convertedVoltage);
+    // Logger::console("resistance reading : %f", before_radiator_resistance);
 
-    double thermistorResistance = 5 * 10800.0/motorTemperatureAnalogReading - 10800; // with 10.8k resistor
-    double mappedTemp = 87.3*exp(-.0001276*thermistorResistance);
-    // double convertedVoltage = (motorTemperatureAnalogReading * (5.0 / 3071.0));
-    // Logger::info(COOLCONTROL, "read voltage: %f", motorTemperatureAnalogReading);
- 
-    // double division = (500000 / convertedVoltage) - 100000;
-    // double result = evaluateExpression(division);
-    Logger::info(COOLCONTROL, "Temperature Reading in Celsius: %f", mappedTemp);
+    double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
+    Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
 
-    // Running the PWM
-    // systemIO.setDigitalOutput(0,true);
-    // systemIO.setDigitalOutputPWM(0, 60, 400);
-    // systemIO.setDigitalOutput(1, true);
-    // systemIO.setDigitalOutputPWM(1, 60, 400);
-    // systemIO.setDigitalOutput(2,true);
-    // systemIO.setDigitalOutputPWM(2, 60, 400);
-    // systemIO.setDigitalOutput(3,true);
-    // systemIO.setDigitalOutputPWM(3, 60, 400);
-    // systemIO.setDigitalOutput(4,true);
-    // systemIO.setDigitalOutputPWM(4, 60, 400);
-    // systemIO.setDigitalOutput(5,true);
-    // systemIO.setDigitalOutputPWM(5, 60, 400);
-    // systemIO.setDigitalOutput(6,true);
-    // systemIO.setDigitalOutputPWM(6, 60, 400);
-    systemIO.setDigitalOutput(7,true);
-    systemIO.setDigitalOutputPWM(7, 60, 400);
+    int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    double convertedVoltageAfter = (accumulatorTemperatureAnalogReading / 818.0);
+    // Logger::console("Voltage reading : %f", convertedVoltageAfter);
+    double after_radiator_resistance = (14666 * convertedVoltageAfter) / (5 - convertedVoltageAfter);
+    // Logger::console("resistance reading : %f", after_radiator_resistance);
+    double temp_after_Radiator = thermistorToCelsius(after_radiator_resistance);
+    Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
+
+
+    // This chunk of code is commented out because we are not doing dynamic cooling,
+    // in the future, if you want to do dynamic cooling, add the specific logic here
+    int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    if (max_temp_percent >= 1000){
+        // motorController->setOpState(1); // disable motor if the temps are greater than 100%. ISSUE ! ! ! ! ! !. This will intefere with the throttle plausibilty stuff
+                                            // need a better way to raise faults for the motor but for now since we arent doing anything for that we are chilling.
+    }
+    else{
+        // motorController->setOpState(2); // 
+        if(max_temp_percent >= 900){
+         //duty cycle 90
+        // systemIO.setDigitalOutput(config->waterMotorPin,true);
+        // systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
+        }
+        else if(max_temp_percent >= 800){
+            //duty cycle 80
+            // systemIO.setDigitalOutput(config->waterMotorPin,true);
+            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
+        }
+        else if(max_temp_percent>= 700){
+            //duty cycle 70
+            // systemIO.setDigitalOutput(config->waterMotorPin,true);
+            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
+        }
+        else if(max_temp_percent>= 600){
+            //duty cycle 60
+            // systemIO.setDigitalOutput(config->waterMotorPin,true);
+            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
+        }
+    }
 }
 /*
  * Return the device ID
@@ -135,6 +167,142 @@ DeviceId CoolingController::getId() {
 DeviceType CoolingController::getType()
 {
     return (DeviceType::DEVICE_CHARGER);
+}
+
+/*
+ * Map the constrained level linearly to a signed value from 0 to 1000.
+ */
+int32_t CoolingController::normalizeInput(int32_t input, int32_t min, int32_t max) {
+    return map(input, min, max, (int32_t) 0, (int32_t) 1000);
+}
+
+void CoolingController::handleCanFrame(const CAN_message_t &frame){
+    uint16_t payload = decode_hex(frame.buf[1], frame.buf[2]);
+    switch(frame.buf[0]){
+        case 0x49: //motor
+            motor_temp_percentage = normalizeInput(motorToCelsius(payload), 0, MAX_MOTOR_TEMP);
+        case 0x4a: //motor controller 
+            motor_ctrl_temp_percentage = normalizeInput(motorControllerToCelsius(payload), 0, MAX_MOTOR_CTRL_TEMP);
+    }
+}
+
+
+// LUT for motor temperature
+static const struct {
+    int32_t value;  
+    int16_t tempC; 
+} motorTempLookup[] = {
+    {7414, -35}, {7687, -30}, {7962, -25}, {8240, -20}, {8520, -15},
+    {8802, -10}, {9085, -5},  {9369,  0},  {9654,  5},  {9939, 10},
+    {10225, 15}, {10510, 20}, {10795, 25}, {11080, 30}, {11364, 35},
+    {11646, 40}, {11927, 45}, {12207, 50}, {12485, 55}, {12762, 60},
+    {13036, 65}, {13308, 70}, {13578, 75}, {13846, 80}, {14111, 85},
+    {14373, 90}, {14633, 95}, {14890, 100}, {15144, 105}, {15391, 110},
+    {15632, 115}, {15852, 120}, {16061, 125}, {16251, 130}, {16421, 135},
+    {16569, 140}, {16692, 145}, {16789, 150}, {16857, 155}
+};
+
+/************************************************
+  motorToCelsius: 
+    Function to convert motor temp to celsius
+  Args: 
+    reading (uint_16_t): first parameter
+      raw hex bytes of the motor temperature msg
+  Returns:
+    double
+************************************************/
+int16_t CoolingController::motorToCelsius(uint16_t reading) const{
+    for (int i = 1; i < (int)(sizeof(motorTempLookup) / sizeof(motorTempLookup[0])); ++i) {
+        if (reading <= motorTempLookup[i].value) {
+            double t1 = motorTempLookup[i-1].tempC;
+            double t2 = motorTempLookup[i].tempC;
+            double v1 = motorTempLookup[i-1].value;
+            double v2 = motorTempLookup[i].value;
+
+            double ratio = (reading - v1) / (v2 - v1);
+            double result = t1 + ratio * (t2 - t1);
+            return (int)result; // Truncate fractional part
+        }
+    }
+    return (int)motorTempLookup[sizeof(motorTempLookup) / sizeof(motorTempLookup[0]) - 1].tempC;
+}
+
+// LUT for motor controller temperature 
+static const struct {
+      int16_t tempC;
+      uint16_t value;
+  } controllerTempLookup[] = {
+      { 125, 28480 }, { 120, 28179 }, { 115, 27851 }, { 110, 27497 },
+      { 105, 27114 }, { 100, 26702 }, {  95, 26261 }, {  90, 25792 },
+      {  85, 25296 }, {  80, 24775 }, {  75, 24232 }, {  70, 23671 },
+      {  65, 23097 }, {  60, 22515 }, {  55, 21933 }, {  50, 21357 },
+      {  45, 20793 }, {  40, 20250 }, {  35, 19733 }, {  30, 19247 },
+      {  25, 18797 }, {  20, 18387 }, {  15, 18017 }, {  10, 17688 },
+      {   5, 17400 }, {   0, 17151 }, {  -5, 16938 }, { -10, 16757 },
+      { -15, 16609 }, { -20, 16487 }, { -25, 16387 }, { -30, 16308 }
+  };
+
+/************************************************
+  motorControllerToCelsius: 
+    Function to convert motor controller temp to celsius
+  Args: 
+    reading (uint_16_t): first parameter
+      raw hex bytes of the motor controller temperature msg
+  Returns:
+    double
+************************************************/
+int16_t CoolingController::motorControllerToCelsius(uint16_t reading) const {
+    for (int i = 1; i < (int)(sizeof(controllerTempLookup) / sizeof(controllerTempLookup[0])); ++i) {
+        if (reading >= controllerTempLookup[i].value) {
+            double t1 = controllerTempLookup[i-1].tempC;
+            double t2 = controllerTempLookup[i].tempC;
+            double v1 = controllerTempLookup[i-1].value;
+            double v2 = controllerTempLookup[i].value;
+
+            double ratio = (reading - v2) / (v1 - v2);
+            double result = t2 + ratio * (t1 - t2);
+            return (int)result; // Truncate fractional part
+        }
+    }
+    return (int)controllerTempLookup[sizeof(controllerTempLookup) / sizeof(controllerTempLookup[0]) - 1].tempC;
+}
+
+
+static const struct {
+    double r_value;
+    double temp;
+} 
+thermistorTempLookup[] = {
+    {332776, -40},
+    {96481,  -20}, 
+    {32566,    0}, 
+    {12486,   20}, 
+    {10000,   25}, 
+    {5331,    40}, 
+    {2490,    60}, 
+    {1071,    85}, 
+    {678,    100}, 
+    {338,    120}  
+};
+
+double CoolingController::thermistorToCelsius(const double reading) const {
+    for (int i = 1; i < (int)(sizeof(thermistorTempLookup) / sizeof(thermistorTempLookup[0])); ++i) {
+        if (reading >= thermistorTempLookup[i].r_value) {
+            double t1 = thermistorTempLookup[i-1].temp;
+            double t2 = thermistorTempLookup[i].temp;
+            double r1 = thermistorTempLookup[i-1].r_value;
+            double r2 = thermistorTempLookup[i].r_value;
+
+            double ratio = (reading - r2) / (r1 - r2);
+            return t2 + ratio * (t1 - t2);
+        }
+    }
+    return (double)thermistorTempLookup[sizeof(thermistorTempLookup) / sizeof(thermistorTempLookup[0]) - 1].temp;
+}
+
+uint16_t CoolingController::decode_hex(const uint8_t first_half, const uint8_t second_half) const{
+    //second_half has 256 more weight since it is in the 2nd place of base 16, 16^2 = 256.
+    return second_half * 256 + first_half;
 }
 
 /*
@@ -153,23 +321,10 @@ void CoolingController::loadConfiguration() {
     
     Device::loadConfiguration(); // call parent
 
-    //TODO Change pin number to pin for input
-    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 0); // ANALOG0 PIN
-    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 1); // ANALOG1 PIN
-    prefsHandler->read("fanAccumulatorPin", &config->fanAccumulatorPin, 255);
-    prefsHandler->read("fanMotorPin", &config->fanMotorPin, 255);
-    prefsHandler->read("waterAccumulatorPin", &config->waterAccumulatorPin, 255);
-    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 255);
-
-    prefsHandler->read("motorPumpOnTemperature", &config->motorPumpOnTemperature, 0);
-    prefsHandler->read("motorPumpOffTempearture", &config->motorPumpOffTempearture, 0);
-    prefsHandler->read("accumulatorPumpOnTemperature", &config->accumulatorPumpOnTemperature, 0);
-    prefsHandler->read("accumulatorPumpOffTemperature", &config->accumulatorPumpOffTemperature, 0);
-    
-    prefsHandler->read("motorFanOnTemperature", &config->motorFanOnTemperature, 0);
-    prefsHandler->read("motorFanOffTemperature", &config->motorFanOffTemperature, 0);
-    prefsHandler->read("accumulatorFanOnTemperature", &config->accumulatorFanOnTemperature, 0);
-    prefsHandler->read("accumulatorFanOffTemperature", &config->accumulatorFanOffTemperature, 0);
+    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 4); 
+    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 5);
+    prefsHandler->read("waterMotorPin", &config->waterMotorPin, 0);
+    prefsHandler->read("radiatorFanPin", &config->radiatorFanPin, 1);
 }
 /*
  * Store the current configuration to EEPROM
@@ -178,24 +333,10 @@ void CoolingController::saveConfiguration() {
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
 
     Device::saveConfiguration(); // call parent
-
-    //TODO Change pin number to pin for input
     prefsHandler->write("motorTempeartureSensorPin", config->motorTemperatureSensorPin);
     prefsHandler->write("accumulatorTempeartureSensorPin", config->accumulatorTemperatureSensorPin);
-    prefsHandler->write("fanAccumulatorPin", config->fanAccumulatorPin);
-    prefsHandler->write("fanMotorPin", config->fanMotorPin);
-    prefsHandler->write("waterAccumulatorPin", config->waterAccumulatorPin);
     prefsHandler->write("waterMotorPin", config->waterMotorPin);
-
-    prefsHandler->write("motorPumpOnTemperature", config->motorPumpOnTemperature);
-    prefsHandler->write("motorPumpOffTempearture", config->motorPumpOffTempearture);
-    prefsHandler->write("accumulatorPumpOnTemperature", config->accumulatorPumpOnTemperature);
-    prefsHandler->write("accumulatorPumpOffTemperature", config->accumulatorPumpOffTemperature);
-    
-    prefsHandler->write("motorFanOnTemperature", config->motorFanOnTemperature);
-    prefsHandler->write("motorFanOffTemperature", config->motorFanOffTemperature);
-    prefsHandler->write("accumulatorFanOnTemperature", config->accumulatorFanOnTemperature);
-    prefsHandler->write("accumulatorFanOffTemperature", config->accumulatorFanOffTemperature);
+    prefsHandler->write("radiatorFanPin", config->radiatorFanPin); 
 
     prefsHandler->saveChecksum();
     prefsHandler->forceCacheWrite();
