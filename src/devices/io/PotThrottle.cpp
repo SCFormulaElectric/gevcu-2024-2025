@@ -103,10 +103,10 @@ void PotThrottle::handleTick() {
     bool throttleOver25 = getLevel() > 250;
     bool throttleUnder5 = getLevel() < 50;
 
-    if (!fault_brake_throttle_engaged && brakeEngaged && throttleOver25 && motorController->getOpState() != 4) {
+    if (!fault_brake_throttle_engaged && brakeEngaged && throttleOver25 && motorController->getOpState() != MotorController::THROTTLE_ERROR) {
         fault_brake_throttle_engaged = true;
         Logger::error("Brake engaged while throttle > 25%% — initiating motor shutdown.");
-        motorController->setOpState(5);
+        motorController->setOpState(MotorController::PLAUSIBILITY_ERROR);
     }
 
     if (fault_brake_throttle_engaged) {
@@ -115,8 +115,8 @@ void PotThrottle::handleTick() {
             fault_brake_throttle_engaged = false;
             motorController->setOpState(2);
         } else {
-            if (motorController->getOpState() == 2) {
-                motorController->setOpState(5);
+            if (motorController->getOpState() == MotorController::ENABLE) {
+                motorController->setOpState(MotorController::PLAUSIBILITY_ERROR);
             }
         }
     }
@@ -151,8 +151,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
         status = ERR_HIGH_T1;
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A, true);
         if (fault_throttle_high_a) {
-            if (motorController->getOpState() == 2){
-                motorController->setOpState(4);
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
         } else {
             fault_throttle_high_a = true;
@@ -172,8 +172,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
         status = ERR_LOW_T1;
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A, true);
         if (fault_throttle_low_a) {
-            if (motorController->getOpState() == 2){
-                motorController->setOpState(4);
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
         } else {
             fault_throttle_low_a = true;
@@ -195,8 +195,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             status = ERR_HIGH_T2;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B, true);
             if (fault_throttle_high_b) {
-                if (motorController->getOpState() == 2){
-                    motorController->setOpState(4);
+                if (motorController->getOpState() == MotorController::ENABLE){
+                    motorController->setOpState(MotorController::THROTTLE_ERROR);
                 }
             } else {
                 fault_throttle_high_b = true;
@@ -216,7 +216,7 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B, true);
             if (fault_throttle_low_b) {
                 if (motorController->getOpState() == MotorController::ENABLE){
-                    motorController->setOpState(4);
+                    motorController->setOpState(MotorController::THROTTLE_ERROR);
                 }
             } else {
                 fault_throttle_low_b = true;
@@ -235,8 +235,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             status = ERR_MISMATCH;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
             if (fault_throttle_mismatch_ab) {
-                if (motorController->getOpState() == 2){
-                    motorController->setOpState(4);
+                if (motorController->getOpState() == MotorController::ENABLE){
+                    motorController->setOpState(MotorController::THROTTLE_ERROR);
                 }
             } else {
                 fault_throttle_mismatch_ab = true;
@@ -252,8 +252,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             status = ERR_MISMATCH;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
             if (fault_throttle_mismatch_ab) {
-                if (motorController->getOpState() == 2){
-                    motorController->setOpState(4);
+                if (motorController->getOpState() == MotorController::ENABLE){
+                    motorController->setOpState(MotorController::THROTTLE_ERROR);
                 }
             } else {
                 fault_throttle_mismatch_ab = true;
