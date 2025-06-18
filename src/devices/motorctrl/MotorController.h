@@ -77,10 +77,12 @@ public:
     };
 
     enum OperationState {
-        DISABLED =  0,
-        STANDBY =   1,
-        ENABLE =    2,
-        POWERDOWN = 3
+        DISABLED           = 0,       // not used  
+        STANDBY            = 1,       // default start 
+        ENABLE             = 2,       // free rolling 
+        POWERDOWN          = 3,       // not used
+        THROTTLE_ERROR     = 4, 
+        PLAUSIBILITY_ERROR = 5
     };
 
     union MotorStatus
