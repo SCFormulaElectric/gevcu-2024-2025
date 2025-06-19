@@ -130,6 +130,7 @@ RawSignalData *PotThrottle::acquireRawSignal() {
 
     rawSignal.input1 = systemIO.getAnalogIn(config->AdcPin1);
     rawSignal.input2 = systemIO.getAnalogIn(config->AdcPin2);
+
     return &rawSignal;
 }
 
@@ -148,20 +149,15 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
     if (calcThrottle1 > (1000 + CFG_THROTTLE_TOLERANCE)) {
         if (status == OK)
             Logger::error(POTACCELPEDAL, "ERR_HIGH_T1: throttle 1 value out of range: %i", calcThrottle1);
-        status = ERR_HIGH_T1;
-        faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A, true);
-        if (fault_throttle_high_a) {
+            status = ERR_HIGH_T1;
+            faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A, true);
             if (motorController->getOpState() == MotorController::ENABLE){
                 motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
-        } else {
-            fault_throttle_high_a = true;
-        }
         return false;
     } else {
         if (calcThrottle1 > 1000) calcThrottle1 = 1000;
         faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_A);
-        fault_throttle_high_a = false;
     }
 
     // error in throttle analog 
@@ -171,18 +167,13 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
             Logger::error(POTACCELPEDAL, "ERR_LOW_T1: throttle 1 value out of range: %i ", calcThrottle1);
         status = ERR_LOW_T1;
         faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A, true);
-        if (fault_throttle_low_a) {
-            if (motorController->getOpState() == MotorController::ENABLE){
-                motorController->setOpState(MotorController::THROTTLE_ERROR);
-            }
-        } else {
-            fault_throttle_low_a = true;
+        if (motorController->getOpState() == MotorController::ENABLE){
+            motorController->setOpState(MotorController::THROTTLE_ERROR);
         }
         return false;
     } else {
         if (calcThrottle1 < 0) calcThrottle1 = 0;
         faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_A);
-        fault_throttle_low_a = false;
     }
 
     if (config->numberPotMeters > 1) {
@@ -194,18 +185,13 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                 Logger::error(POTACCELPEDAL, "ERR_HIGH_T2: throttle 2 value out of range: %i", calcThrottle2);
             status = ERR_HIGH_T2;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B, true);
-            if (fault_throttle_high_b) {
-                if (motorController->getOpState() == MotorController::ENABLE){
-                    motorController->setOpState(MotorController::THROTTLE_ERROR);
-                }
-            } else {
-                fault_throttle_high_b = true;
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
             return false;
         } else {
             if (calcThrottle2 > 1000) calcThrottle2 = 1000;
             faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_HIGH_B);
-            fault_throttle_high_b = false;
         }
 
         // error in throttle analog 2
@@ -214,18 +200,13 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                 Logger::error(POTACCELPEDAL, "ERR_LOW_T2: throttle 2 value out of range: %i", calcThrottle2);
             status = ERR_LOW_T2;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B, true);
-            if (fault_throttle_low_b) {
-                if (motorController->getOpState() == MotorController::ENABLE){
-                    motorController->setOpState(MotorController::THROTTLE_ERROR);
-                }
-            } else {
-                fault_throttle_low_b = true;
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
             return false;
         } else {
             if (calcThrottle2 < 0) calcThrottle2 = 0;
             faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_LOW_B);
-            fault_throttle_low_b = false;
         }
 
         // plausability diff too high
@@ -234,14 +215,9 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                 Logger::error(POTACCELPEDAL, "throttle 1 too high (%i) compared to 2 (%i)", calcThrottle1, calcThrottle2);
             status = ERR_MISMATCH;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
-            if (fault_throttle_mismatch_ab) {
-                if (motorController->getOpState() == MotorController::ENABLE){
-                    motorController->setOpState(MotorController::THROTTLE_ERROR);
-                }
-            } else {
-                fault_throttle_mismatch_ab = true;
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
-
             return false;
         }
 
@@ -251,19 +227,14 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
                 Logger::error(POTACCELPEDAL, "throttle 2 too high (%i) compared to 1 (%i)", calcThrottle2, calcThrottle1);
             status = ERR_MISMATCH;
             faultHandler.raiseFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB, true);
-            if (fault_throttle_mismatch_ab) {
-                if (motorController->getOpState() == MotorController::ENABLE){
-                    motorController->setOpState(MotorController::THROTTLE_ERROR);
-                }
-            } else {
-                fault_throttle_mismatch_ab = true;
+            if (motorController->getOpState() == MotorController::ENABLE){
+                motorController->setOpState(MotorController::THROTTLE_ERROR);
             }
             return false;
         }
         else
         {
            faultHandler.cancelOngoingFault(POTACCELPEDAL, FAULT_THROTTLE_MISMATCH_AB);
-            fault_throttle_mismatch_ab = false;
         }
         
     }

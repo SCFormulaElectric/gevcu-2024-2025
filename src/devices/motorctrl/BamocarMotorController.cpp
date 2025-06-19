@@ -30,7 +30,7 @@ void BamocarMotorController::setup() {
     running = true;
     setPowerMode(modeTorque);
     setSelectedGear(DRIVE);
-    setOpState(STANDBY);
+    setOpState(ENABLE);
 
     setAttachedCANBus(1);
     //Can Message to Bamocar for the actual speed
@@ -89,7 +89,12 @@ void BamocarMotorController::setup() {
 void BamocarMotorController::handleTick() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     MotorController::handleTick();
-    
+    if (getOpState() == THROTTLE_ERROR){
+        Logger::info("throttle errored");
+    }
+    else if (getOpState() == PLAUSIBILITY_ERROR){
+        Logger::info("plausbiltiy error");
+    }
     if (extern_curr_state == S2){
         if (getOpState() == ENABLE){
             if (throttleRequested < 0) throttleRequested = 0;
@@ -172,9 +177,8 @@ void BamocarMotorController::setGear(Gears gear) {
 void BamocarMotorController::setOpState(OperationState op){
     OperationState prevOpState = getOpState();
     MotorController::setOpState(op);
-
-    if (op == STANDBY && prevOpState != STANDBY){
-        Logger::console("Transitioning to STANDBY from %d", prevOpState);
+    if (prevOpState == ENABLE){
+        Logger::console("Transitioning to %d from %d", op, prevOpState);
         attachedCANBus->sendFrame(freeRolling);
         last_sent_value = 0;
         disable_sent = true;
