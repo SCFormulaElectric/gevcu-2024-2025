@@ -103,6 +103,21 @@ void PotThrottle::handleTick() {
     bool throttleOver25 = getLevel() > 250;
     bool throttleUnder5 = getLevel() < 50;
 
+    // test first error
+    // should hit both print outs "brake engaged while throttle..." "throttle < 5%"
+    brakeEngaged   = true;
+    throttleOver25 = true; 
+    throttleUnder5 = true;
+    motorController->setOpState(MotorController::ENABLE);
+
+    // test second error
+    // should hit only one ("brake engaged while throttle...")
+    brakeEngaged   = true;
+    throttleOver25 = true; 
+    throttleUnder5 = true;
+    motorController->setOpState(MotorController::ENABLE);
+
+    // plausability
     if (!fault_brake_throttle_engaged && brakeEngaged && throttleOver25 && motorController->getOpState() != MotorController::THROTTLE_ERROR) {
         fault_brake_throttle_engaged = true;
         Logger::error("Brake engaged while throttle > 25%% — initiating motor shutdown.");
@@ -111,9 +126,9 @@ void PotThrottle::handleTick() {
 
     if (fault_brake_throttle_engaged) {
         if (throttleUnder5) {
-            Logger::info("Throttle < 5%% — resuming regular operation.");
+            Logger::info("Throttle < 5% — resuming regular operation.");
             fault_brake_throttle_engaged = false;
-            motorController->setOpState(2);
+            motorController->setOpState(MotorController::OperationState::ENABLE);
         } else {
             if (motorController->getOpState() == MotorController::ENABLE) {
                 motorController->setOpState(MotorController::PLAUSIBILITY_ERROR);
