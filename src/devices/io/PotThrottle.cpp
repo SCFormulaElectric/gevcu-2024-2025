@@ -112,9 +112,9 @@ void PotThrottle::handleTick() {
 
     // test second error
     // should hit only one ("brake engaged while throttle...")
-    // brakeEngaged   = true;
-    // throttleOver25 = true; 
-    // throttleUnder5 = false;
+    brakeEngaged   = true;
+    throttleOver25 = true; 
+    throttleUnder5 = false;
     // motorController->setOpState(MotorController::ENABLE);
 
     // plausability
@@ -122,6 +122,7 @@ void PotThrottle::handleTick() {
         fault_brake_throttle_engaged = true;
         Logger::error("Brake engaged while throttle > 25%% — initiating motor shutdown.");
         motorController->setOpState(MotorController::PLAUSIBILITY_ERROR);
+        return;
     }
 
     if (fault_brake_throttle_engaged) {
@@ -146,8 +147,8 @@ RawSignalData *PotThrottle::acquireRawSignal() {
     rawSignal.input1 = systemIO.getAnalogIn(config->AdcPin1);
     rawSignal.input2 = systemIO.getAnalogIn(config->AdcPin2);
 
-    rawSignal.input1 = 818;
-    rawSignal.input2 = 818; 
+    // rawSignal.input1 = 818;
+    //  rawSignal.input2 = 818; 
     return &rawSignal;
 }
 
