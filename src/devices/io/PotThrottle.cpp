@@ -105,17 +105,17 @@ void PotThrottle::handleTick() {
 
     // test first error
     // should hit both print outs "brake engaged while throttle..." "throttle < 5%"
-    brakeEngaged   = true;
-    throttleOver25 = true; 
-    throttleUnder5 = true;
-    motorController->setOpState(MotorController::ENABLE);
+    // brakeEngaged   = true;
+    // throttleOver25 = true; 
+    // throttleUnder5 = true;
+    // motorController->setOpState(MotorController::ENABLE);
 
     // test second error
     // should hit only one ("brake engaged while throttle...")
-    brakeEngaged   = true;
-    throttleOver25 = true; 
-    throttleUnder5 = true;
-    motorController->setOpState(MotorController::ENABLE);
+    // brakeEngaged   = true;
+    // throttleOver25 = true; 
+    // throttleUnder5 = false;
+    // motorController->setOpState(MotorController::ENABLE);
 
     // plausability
     if (!fault_brake_throttle_engaged && brakeEngaged && throttleOver25 && motorController->getOpState() != MotorController::THROTTLE_ERROR) {
@@ -145,6 +145,9 @@ RawSignalData *PotThrottle::acquireRawSignal() {
 
     rawSignal.input1 = systemIO.getAnalogIn(config->AdcPin1);
     rawSignal.input2 = systemIO.getAnalogIn(config->AdcPin2);
+
+    rawSignal.input1 = 818;
+    rawSignal.input2 = 818; 
     return &rawSignal;
 }
 
