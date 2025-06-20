@@ -78,6 +78,8 @@ void StatemachineDevice::setup() {
     buzz_msg.buf[0] = 0x1;
     buzz_msg.buf[1] = 0x02;
 
+    extern_curr_state = S0; // set the state to S0 on start up
+
     /*
       buzz_msg[0] : a value to say hey buzz it up
       buzz_msg[1] : what was the prev state (either 1 or 2) 
@@ -95,10 +97,10 @@ void StatemachineDevice::setup() {
 */
 void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
     if(Logger::isDebug()){
-        Logger::debug("Statemachine id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-                      frame.id, frame.len, 
-                      frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-                      frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+        // Logger::debug("Statemachine id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+        //               frame.id, frame.len, 
+        //               frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+        //               frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
     }
     // change the id and the actual like contents of the CAN frame
     /*

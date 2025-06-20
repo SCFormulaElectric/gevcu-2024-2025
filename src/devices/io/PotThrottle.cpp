@@ -313,7 +313,7 @@ void PotThrottle::loadConfiguration() {
         prefsHandler->read("ThrottleType", &config->throttleSubType, 1);
 
         prefsHandler->read("ADC1", &config->AdcPin1, 0);
-        prefsHandler->read("ADC2", &config->AdcPin2, 5);
+        prefsHandler->read("ADC2", &config->AdcPin2, 1);
 
         // prefsHandler->read("ADC1", &config->AdcPin1, 0);
         // prefsHandler->read("ADC2", &config->AdcPin2, 1);
