@@ -89,11 +89,25 @@ void BamocarMotorController::setup() {
 void BamocarMotorController::handleTick() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     MotorController::handleTick();
+
     if (getOpState() == THROTTLE_ERROR){
         Logger::info("throttle errored");
+        if (!disable_sent){
+            attachedCANBus->sendFrame(freeRolling);
+            last_sent_value = 0;
+            disable_sent = true;
+            enable_sent = false;
+        }
+        
     }
     else if (getOpState() == PLAUSIBILITY_ERROR){
         Logger::info("plausbiltiy error");
+        if(!disable_sent){
+            attachedCANBus->sendFrame(freeRolling);
+            last_sent_value = 0;
+            disable_sent = true;
+            enable_sent = false;
+        }
     }
     if (extern_curr_state == S2){
         if (getOpState() == ENABLE){
@@ -177,13 +191,13 @@ void BamocarMotorController::setGear(Gears gear) {
 void BamocarMotorController::setOpState(OperationState op){
     OperationState prevOpState = getOpState();
     MotorController::setOpState(op);
-    if (prevOpState == ENABLE){
-        Logger::console("Transitioning to %d from %d", op, prevOpState);
-        attachedCANBus->sendFrame(freeRolling);
-        last_sent_value = 0;
-        disable_sent = true;
-        enable_sent = false;
-    }
+    // if (prevOpState == ENABLE){
+    //     Logger::console("Transitioning to %d from %d", op, prevOpState);
+    //     attachedCANBus->sendFrame(freeRolling);
+    //     last_sent_value = 0;
+    //     disable_sent = true;
+    //     enable_sent = false;
+    // }
 
     Logger::console("Current OpState: %d", getOpState());
 }

@@ -133,25 +133,24 @@ void StatemachineDevice::handleTick() {
   // int brakeLevel = 10;                           // change this until it's time to test the pressure sensor
 
 
-  tsms       = systemIO.getDigitalIn(5);    // i think this is equivalent to the shutdown
-  r2d        = systemIO.getDigitalIn(4);
-  int brakeA = systemIO.getAnalogIn(6);     // read same pressure as B?
-  int brakeB = systemIO.getAnalogIn(7);     // read same pressure as A?
+  tsms       = systemIO.getDigitalIn(5);      // i think this is equivalent to the shutdown
+  r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20
 
   //tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
-  if (abs(brakeA + brakeB) > 1500)                       // change the value above some threshold
+  if (checkBrakeLevel() > 500 && checkBrakeLevel() != -1)  // could be redundance check
   {
     threshold_brake = true;
   }
   else {
     threshold_brake = false;
   }
+
   if (extern_curr_state == S0) {        // state 0, this is tested
     if(threshold_brake && tsms && r2d){
       updateState(S1);
-       buzz_msg.buf[1] = 1; // set to the first time you send the rdy buzzer
+      buzz_msg.buf[1] = 1; // set to the first time you send the rdy buzzer
     } else {
       updateState(S0);
     }
@@ -201,12 +200,15 @@ void StatemachineDevice::handleTick() {
 }
 
 
-// void StatemachineDevice::checkBrakeLevel() { // help with chat to get the function over here
-//         if (potBrake) {
-//             int16_t level = potBrake->getLevel();
-//             Serial.println("Brake Level: " + String(level));
-//         }
-//     }
+int16_t StatemachineDevice::checkBrakeLevel() { // help with chat to get the function over here
+        int16_t brake = -1; 
+        if (potBrake) {
+            int16_t brake = potBrake->getLevel();
+            // Serial.println("Brake Level: " + String(level));
+        }
+
+        return brake;
+    }
   
 
 void StatemachineDevice::loadConfiguration() {

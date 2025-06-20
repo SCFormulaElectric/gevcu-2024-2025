@@ -28,7 +28,7 @@ public:
     void earlyInit();        // called early and whether or not the device is enabled. Just used to setup configuration
     void handleTick();       // this is called every 1000000 cycles (i think needs checking)
     void handleCanFrame(const CAN_message_t &frame); // handle can frame
-    void checkBrakeLevel();
+    int16_t checkBrakeLevel();
     DeviceId getId();
     DeviceType getType();
     
@@ -54,7 +54,7 @@ private:
                               */
     // int32_t brake1;           // this is probably need to change (ask tim)
     // int32_t brake2;           // this is probably need to change (ask tim)
-    int16_t brake; 
+    int16_t brake_level; 
     bool tsms;                // this is circuit is connected
     bool r2d;                 // digital signal ready to drive
     bool threshold_brake;     // if it's above a threshold (ask tim)
