@@ -180,15 +180,13 @@ void StatemachineDevice::handleTick() {
     }
     Logger::console(" I am in state S1\n");
 
-    /*
-      As long as the tsms && brake && r2d are all valid
-      Then proceeed to S2, else we'll have to replay this again
-
-      It assumes that you have the brakes depressed in state 2, you might
-      beable to get rid of it
-
-      Note: I might need a timer on the redundancy and count some cycles
-      before returning to s0
+   /*
+    * As long as the tsms && brake && r2d are all valid
+    * Then proceeed to S2, else we'll have to replay this again
+    * It assumes that you have the brakes depressed in state 2, you might
+    * beable to get rid of it
+    * Note: I might need a timer on the redundancy and count some cycles
+    * before returning to s0
     */
 
   } else if (extern_curr_state == S2) { // state 2
@@ -215,9 +213,9 @@ void StatemachineDevice::loadConfiguration() {
   Device::loadConfiguration();
 }
 
-/*
-* Store the current configuration to EEPROM
-*/
+ /*
+  * Store the current configuration to EEPROM
+  */
 void StatemachineDevice::saveConfiguration() {
   Device::loadConfiguration();
 }
