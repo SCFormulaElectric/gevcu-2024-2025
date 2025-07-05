@@ -246,8 +246,8 @@ bool PotThrottle::validateSignal(RawSignalData *rawSignal) {
     if (status != OK)
         if (status != ERR_MISC) Logger::info(POTACCELPEDAL, (char *)Constants::normalOperation);
 
-    if (motorController->getOpState() == 4 && motorController->getOpState() != 5){
-        motorController->setOpState(2);
+    if (motorController->getOpState() == 4 && motorController->getOpState() != 5){ // technically its redundant since it can only be in one state at a time only need one condition, the first one
+        motorController->setOpState(MotorController::ENABLE);
     }
 
     status = OK;

@@ -58,7 +58,8 @@ private:
     bool tsms;                // this is circuit is connected
     bool r2d;                 // digital signal ready to drive
     bool threshold_brake;     // if it's above a threshold (ask tim)
-
+    int32_t brake1;
+    int32_t brake2;
     PotBrake *potBrake; // Pointer to a PotBrake instance
 
     

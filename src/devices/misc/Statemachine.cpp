@@ -66,7 +66,7 @@ void StatemachineDevice::setup() {
     Device::setup(); // run the parent class version of this function
 
     setAttachedCANBus(1);
-    attachedCANBus->attach(this, 0x310, 0x000, false);
+    attachedCANBus->attach(this, 0x110, 0x00, false);
     tickHandler.attach(this, StatemachineTickInt);
     // set flags
     dash_send_flag = 1;
@@ -97,10 +97,10 @@ void StatemachineDevice::setup() {
 */
 void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
     if(Logger::isDebug()){
-        // Logger::debug("Statemachine id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-        //               frame.id, frame.len, 
-        //               frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-        //               frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+        // Logger::debug("Statemachine id=%X", frame.id);/* len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+                      // frame.id, frame.len, 
+                      // frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+                      // frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);*/
     }
     // change the id and the actual like contents of the CAN frame
     /*
@@ -109,7 +109,6 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
       frame.buf[2] : idk a check sum (not needed honestly)
     */
     if(frame.id == 0x110){ 
-      if(frame.buf[0] == 0x1 && frame.buf[1] == 0x2)
         dash_val_msg = 1; 
     }
 }
@@ -127,21 +126,16 @@ void StatemachineDevice::handleTick() {
  *  read in the values
  */
 
-  // brake1 = 40;
-  // brake2 = 0;
-
-  // brake = PotBrake.getLevel();
-  // int16_t brakeLevel = potBrake->getLevel(); // Get the brake level
-  // int brakeLevel = 10;                           // change this until it's time to test the pressure sensor
-
 
   tsms       = systemIO.getDigitalIn(5);      // i think this is equivalent to the shutdown
   r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20
-
+  brake1        = systemIO.getAnalogIn(6);      // tested analogs austin 6/20
+  brake2        = systemIO.getAnalogIn(7);      // tested analogs austin 6/20
+  
   //tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
-  if (checkBrakeLevel() > 500 && checkBrakeLevel() != -1)  // could be redundance check
+  if (brake1 +  brake2 > 1500)  // could be redundance check
   {
     threshold_brake = true;
   }
