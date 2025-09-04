@@ -90,7 +90,6 @@ void StatemachineDevice::setup() {
       buzz_msg[2] : idk a check sum (not needed honestly)
     */
 
-    counter_timer = 0; 
 }
 
 /*For all multibyte integers the format is MSB first, LSB last
@@ -132,10 +131,10 @@ void StatemachineDevice::handleTick() {
   brake1        = systemIO.getAnalogIn(6);      // tested analogs austin 6/20
   brake2        = systemIO.getAnalogIn(7);      // tested analogs austin 6/20
   
-  //tsms  = 1;                                // testing purposes
+  // tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
-  if (brake1 +  brake2 > 1500)  // could be redundance check
+  if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
   }
@@ -155,11 +154,8 @@ void StatemachineDevice::handleTick() {
     // Logger::console("end \n ");
 
   } else if (extern_curr_state == S1) { // state 1
-    if (dash_send_flag) {
-      dash_send_flag = 0; 
-      attachedCANBus->sendFrame(buzz_msg);
-      Logger::console("I sent message\n");
-    }
+    attachedCANBus->sendFrame(buzz_msg);
+    Logger::console("I sent message\n");
     if (tsms && dash_val_msg) {
       updateState(S2);
     }
@@ -167,13 +163,6 @@ void StatemachineDevice::handleTick() {
       updateState(S0);
     }
 
-    counter_timer++;
-    Logger::console("counter: %d", counter_timer);
-    if (counter_timer > 10){
-      dash_send_flag = 1;
-      counter_timer = 0;
-      buzz_msg.buf[1] = 2; // if you have to resend the signal, in state 2
-    }
     Logger::console(" I am in state S1\n");
 
    /*
