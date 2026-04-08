@@ -102,6 +102,16 @@ private:
     // float calibrationFactor;
     // uint32_t tickInterval;
     // bool lastDigitalInputState; 
+    // PID constants
+    #define PID_KP 1.0    // Proportional gain
+    #define PID_KI 0.1    // Integral gain
+    #define PID_KD 0.05   // Derivative gain
+
+    // PID-related variables
+    float prev_error = 0;  // Previous error for D term
+    float integral = 0;    // Integral of the error
+    float setpoint = 800;  // Desired temperature (e.g., 80%)
+    //
     int16_t motorToCelsius(uint16_t reading) const;
     int16_t motorControllerToCelsius(uint16_t reading) const;
     int MAX_MOTOR_TEMP;

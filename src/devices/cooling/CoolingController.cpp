@@ -94,6 +94,32 @@ double evaluateExpression(double x) {
 }
 
 /*
+ * PID Calculation
+ */
+float CoolingController::calculatePID(int16_t current_temp_percent) {
+    // Calculate the error (difference between setpoint and current temperature)
+    float error = setpoint - current_temp_percent;
+    
+    // Proportional term: error * Kp
+    float P = PID_KP * error;
+    
+    // Integral term: accumulated error * Ki
+    integral += error;
+    float I = PID_KI * integral;
+    
+    // Derivative term: rate of change of error * Kd
+    float D = PID_KD * (error - prev_error);
+    
+    // Total output (PID sum)
+    float output = P + I + D;
+    
+    // Update previous error for next iteration
+    prev_error = error;
+    
+    return output;
+}
+
+/*
  * Process a timer event. This is where you should be doing checks and updates. 
  */
 void CoolingController::handleTick() {
@@ -129,33 +155,16 @@ void CoolingController::handleTick() {
     // This chunk of code is commented out because we are not doing dynamic cooling,
     // in the future, if you want to do dynamic cooling, add the specific logic here
     int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
-    if (max_temp_percent >= 1000){
-        // motorController->setOpState(1); // disable motor if the temps are greater than 100%. ISSUE ! ! ! ! ! !. This will intefere with the throttle plausibilty stuff
-                                            // need a better way to raise faults for the motor but for now since we arent doing anything for that we are chilling.
-    }
-    else{
-        // motorController->setOpState(2); // 
-        if(max_temp_percent >= 900){
-         //duty cycle 90
-        // systemIO.setDigitalOutput(config->waterMotorPin,true);
-        // systemIO.setDigitalOutputPWM(config->waterMotorPin, 75, 400);
-        }
-        else if(max_temp_percent >= 800){
-            //duty cycle 80
-            // systemIO.setDigitalOutput(config->waterMotorPin,true);
-            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 70, 400);
-        }
-        else if(max_temp_percent>= 700){
-            //duty cycle 70
-            // systemIO.setDigitalOutput(config->waterMotorPin,true);
-            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 60, 400);
-        }
-        else if(max_temp_percent>= 600){
-            //duty cycle 60
-            // systemIO.setDigitalOutput(config->waterMotorPin,true);
-            // systemIO.setDigitalOutputPWM(config->waterMotorPin, 50, 400);
-        }
-    }
+
+    // Calculate the PID output based on the max temperature
+    float pid_output = calculatePID(max_temp_percent);
+
+    // Ensure the PID output is within a valid range (0 to 100)
+    pid_output = constrain(pid_output, 0, 100);
+
+    // Apply the PID output to control the water pump/fan duty cycle
+    systemIO.setDigitalOutputPWM(config->waterMotorPin, (int16_t)pid_output, 400);
+
 }
 /*
  * Return the device ID

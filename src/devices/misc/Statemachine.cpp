@@ -78,6 +78,13 @@ void StatemachineDevice::setup() {
     buzz_msg.buf[0] = 0x1;
     buzz_msg.buf[1] = 0x02;
 
+    //bms and imd faults to dashboard via can
+    fault_msg.len = 1;
+    fault_msg.id = 0x468;
+    fault_msg.buf[0] = 0x00;
+    // if faulted ->1
+    //0x10 -> bms faulted 0x01 -> imd faulted 0x11 ->both faulted
+
     extern_curr_state = S0; // set the state to S0 on start up
 
     /*
@@ -126,14 +133,31 @@ void StatemachineDevice::handleTick() {
  */
 
 
-  tsms       = systemIO.getDigitalIn(5);      // i think this is equivalent to the shutdown
-  r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20
-  brake1        = systemIO.getAnalogIn(6);      // tested analogs austin 6/20
-  brake2        = systemIO.getAnalogIn(7);      // tested analogs austin 6/20
+  tsms       = systemIO.getDigitalIn(2);      // i think this is equivalent to the shutdown
+  r2d        = systemIO.getDigitalIn(3);      // tested analogs austin 6/20
+  brake1        = systemIO.getAnalogIn(1);      // tested analogs austin 6/20
+  brake2        = systemIO.getAnalogIn(0);      // tested analogs austin 6/20
+  bms_fault       = systemIO.getDigitalIn(1);
+  imd_fault       = systemIO.getDigitalIn(0);
+  
+
   
   // tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
 
+  //constantly send dash bms/imd status regardless of state
+  if (imd_fault = 0){
+      fault_msg.buf[0] &= ~(1);
+  }
+  else{
+     fault_msg.buf[0] |= 1;
+  }
+  if(bms_fault==1){
+     fault_msg.buf[0] |= 2;
+  }
+  else{
+    fault_msg.buf[0] &= ~(2);
+  }
   if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
