@@ -73,7 +73,7 @@ void StatemachineDevice::setup() {
     dash_val_msg = 0;
 
     // Constructed message to dashboard
-    buzz_msg.len = 2;
+    buzz_msg.len = 3;
     buzz_msg.id = 0x109;
     buzz_msg.buf[0] = 0x1;
     buzz_msg.buf[1] = 0x02;
@@ -146,7 +146,7 @@ void StatemachineDevice::handleTick() {
   //r2d   = 1;                                // testing purposes
 
   //constantly send dash bms/imd status regardless of state
-  if (imd_fault = 0){
+  if (imd_fault == 0){
       fault_msg.buf[0] &= ~(1);
   }
   else{
@@ -158,6 +158,7 @@ void StatemachineDevice::handleTick() {
   else{
     fault_msg.buf[0] &= ~(2);
   }
+  attachedCANBus->sendFrame(fault_msg);
   if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
