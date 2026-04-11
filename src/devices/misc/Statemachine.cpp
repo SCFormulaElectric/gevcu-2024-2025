@@ -65,7 +65,7 @@ void StatemachineDevice::setup() {
 
     Device::setup(); // run the parent class version of this function
 
-    setAttachedCANBus(1);
+    setAttachedCANBus(0);
     attachedCANBus->attach(this, 0x110, 0x00, false);
     tickHandler.attach(this, StatemachineTickInt);
     // set flags
@@ -79,6 +79,10 @@ void StatemachineDevice::setup() {
     buzz_msg.buf[1] = 0x02;
 
     extern_curr_state = S0; // set the state to S0 on start up
+    //dash faults via can (imd/bms)
+    fault_msg.len = 1;
+    fault_msg.id = 0x468;
+    fault_msg.buf[0] = 0x00;
 
     /*
       buzz_msg[0] : a value to say hey buzz it up
@@ -128,12 +132,30 @@ void StatemachineDevice::handleTick() {
 
   tsms       = systemIO.getDigitalIn(5);      // i think this is equivalent to the shutdown
   r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20
-  brake1        = systemIO.getAnalogIn(6);      // tested analogs austin 6/20
-  brake2        = systemIO.getAnalogIn(7);      // tested analogs austin 6/20
+  brake1        = systemIO.getAnalogIn(0);      // tested analogs austin 6/20
+  brake2        = systemIO.getAnalogIn(1);      // tested analogs austin 6/20
+  //Logger::console("brake 1 val: %u", brake1);
+  //Logger::console("brake 2 val: %u", brake2);
+
+  fault_imd       = systemIO.getDigitalIn(0);
+  fault_bms       = systemIO.getDigitalIn(1);
   
   // tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
-
+  //fault_imd = 1;
+  if (fault_imd == 0){
+    fault_msg.buf[0] &= ~(1);
+  }
+  else{
+    fault_msg.buf[0] |= 1;
+  }
+  if (fault_bms == 0){
+    fault_msg.buf[0] &= ~(2);
+  }
+  else{
+    fault_msg.buf[0] |= 2;
+  }
+  attachedCANBus->sendFrame(fault_msg);
   if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
@@ -149,8 +171,8 @@ void StatemachineDevice::handleTick() {
     } else {
       updateState(S0);
     }
-    Logger::console("I am in state S0");
-    Logger::console("TSMS: %d, R2D: %d", tsms, r2d);
+    //Logger::console("I am in state S0");
+    //Logger::console("TSMS: %d, R2D: %d", tsms, r2d);
     // Logger::console("end \n ");
 
   } else if (extern_curr_state == S1) { // state 1

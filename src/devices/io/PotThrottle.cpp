@@ -133,6 +133,10 @@ RawSignalData *PotThrottle::acquireRawSignal() {
 
     rawSignal.input1 = systemIO.getAnalogIn(config->AdcPin1);
     rawSignal.input2 = systemIO.getAnalogIn(config->AdcPin2);
+    for (int i = 0; i < 8; i++){
+        Logger::console("AIN%d: %d", i, systemIO.getAnalogIn(i));
+    }
+    //Logger::console("RAW T1: %d T2: %d pins: %d %d", rawSignal.input1, rawSignal.input2, config->AdcPin1, config->AdcPin2);
 
     return &rawSignal;
 }
@@ -263,11 +267,11 @@ int16_t PotThrottle::calculatePedalPosition(RawSignalData *rawSignal) {
     uint16_t calcThrottle1, calcThrottle2;
 
     calcThrottle1 = normalizeAndConstrainInput(rawSignal->input1, config->minimumLevel1, config->maximumLevel1);
-    // Logger::console("Calc throttle 1 %d", calcThrottle1);
+     //Logger::console("Calc throttle 1 %d", calcThrottle1);
 
     if (config->numberPotMeters > 1) {
         calcThrottle2 = normalizeAndConstrainInput(rawSignal->input2, config->minimumLevel2, config->maximumLevel2);
-        // Logger::console("Calc throttle 2 %d", calcThrottle2);
+       //  Logger::console("Calc throttle 2 %d", calcThrottle2);
 
         calcThrottle1 = (calcThrottle1 + calcThrottle2) / 2; // now the average of the two
     }
@@ -312,8 +316,8 @@ void PotThrottle::loadConfiguration() {
         prefsHandler->read("NumThrottles", &config->numberPotMeters, 2);
         prefsHandler->read("ThrottleType", &config->throttleSubType, 1);
 
-        prefsHandler->read("ADC1", &config->AdcPin1, 0);
-        prefsHandler->read("ADC2", &config->AdcPin2, 1);
+        prefsHandler->read("ADC1", &config->AdcPin1, 2);
+        prefsHandler->read("ADC2", &config->AdcPin2, 3);
 
         // prefsHandler->read("ADC1", &config->AdcPin1, 0);
         // prefsHandler->read("ADC2", &config->AdcPin2, 1);

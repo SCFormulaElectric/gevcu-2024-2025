@@ -276,12 +276,12 @@ void PotBrake::loadConfiguration() {
         setConfiguration(config);
     }
     //I lost it trying to write to EEPROM so im just doing it directly 6/7/2025 Austin T.
-    config->AdcPin1 = 6;
-    config->AdcPin2 = 7;
-    config->minimumLevel1 = 400;
-    config->maximumLevel1 = 3681;
-    config->minimumLevel2 = 400;
-    config->maximumLevel2 = 3681;
+    config->AdcPin1 = 0;
+    config->AdcPin2 = 1;
+    config->minimumLevel1 = 497;
+    config->maximumLevel1 = 869;
+    config->minimumLevel2 = 497;
+    config->maximumLevel2 = 869;
     config->numberPotMeters = 2;
     config->throttleSubType = 1;
     Logger::debug(POTBRAKEPEDAL, "BRAKE MIN: %i MAX: %i", config->minimumLevel1, config->maximumLevel1);
