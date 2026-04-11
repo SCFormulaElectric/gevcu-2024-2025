@@ -134,7 +134,7 @@ RawSignalData *PotThrottle::acquireRawSignal() {
     rawSignal.input1 = systemIO.getAnalogIn(config->AdcPin1);
     rawSignal.input2 = systemIO.getAnalogIn(config->AdcPin2);
     for (int i = 0; i < 8; i++){
-        Logger::console("AIN%d: %d", i, systemIO.getAnalogIn(i));
+        //Logger::console("AIN%d: %d", i, systemIO.getAnalogIn(i));
     }
     //Logger::console("RAW T1: %d T2: %d pins: %d %d", rawSignal.input1, rawSignal.input2, config->AdcPin1, config->AdcPin2);
 

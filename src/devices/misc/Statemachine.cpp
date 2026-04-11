@@ -80,9 +80,12 @@ void StatemachineDevice::setup() {
 
     extern_curr_state = S0; // set the state to S0 on start up
     //dash faults via can (imd/bms)
-    fault_msg.len = 1;
-    fault_msg.id = 0x468;
-    fault_msg.buf[0] = 0x00;
+    imd_msg.len = 1;
+    imd_msg.id = 0x468;
+    imd_msg.buf[0] = 0x00;
+    bms_msg.len = 1;
+    bms_msg.id = 0x469;
+    bms_msg.buf[0] = 0x00;
 
     /*
       buzz_msg[0] : a value to say hey buzz it up
@@ -142,20 +145,22 @@ void StatemachineDevice::handleTick() {
   
   // tsms  = 1;                                // testing purposes
   //r2d   = 1;                                // testing purposes
-  //fault_imd = 1;
+  fault_imd = 1;
+  fault_bms = 1;
   if (fault_imd == 0){
-    fault_msg.buf[0] &= ~(1);
+    imd_msg.buf[0] = 0;
   }
   else{
-    fault_msg.buf[0] |= 1;
+    imd_msg.buf[0] = 2;
   }
   if (fault_bms == 0){
-    fault_msg.buf[0] &= ~(2);
+    bms_msg.buf[0] = 0;
   }
   else{
-    fault_msg.buf[0] |= 2;
+    bms_msg.buf[0] = 2;
   }
-  attachedCANBus->sendFrame(fault_msg);
+  attachedCANBus->sendFrame(bms_msg);
+  attachedCANBus->sendFrame(imd_msg);
   if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
