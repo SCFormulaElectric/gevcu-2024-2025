@@ -47,7 +47,7 @@ void CoolingController::earlyInit()
 void CoolingController::setup() {
     crashHandler.addBreadcrumb(ENCODE_BREAD("COOLING") + 0);
     tickHandler.detach(this); // unregister from TickHandler first
-    setAttachedCANBus(1);
+    setAttachedCANBus(0);
     attachedCANBus->attach(this, 0x181, 0xFFF, false);
 
     Logger::info("add device: CoolingController (id: %X, %X)", COOLCONTROL, this);
@@ -104,31 +104,35 @@ void CoolingController::handleTick() {
 
 
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
+    systemIO.setDigitalOutputPWM(0, 10, 970);
+    //Logger::console("check 97%\n");
 
     // Retrieve the temperature of the motor and the accumulator
     int32_t motorTemperatureAnalogReading = systemIO.getAnalogIn(config->motorTemperatureSensorPin);
+    //Logger::console("motorTemp = %d\n", motorTemperatureAnalogReading);
     // Logger::console("Print real Analogreading : %d", motorTemperatureAnalogReading);
-    //int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-    double convertedVoltage = (motorTemperatureAnalogReading / 818.0);
+    //int32_t accumulatorTemperaogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    //double convertedVoltagtureAnale = (motorTemperatureAnalogReading / 818.0);
     // Logger::console("Voltage reading : %f", convertedVoltage);
-    double before_radiator_resistance = (14666 * convertedVoltage) / (5 - convertedVoltage);
+    //double before_radiator_resistance = (14666 * convertedVoltage) / (5 - convertedVoltage);
     // Logger::console("resistance reading : %f", before_radiator_resistance);
 
-    double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
-    Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
+    //double temp_before_Radiator = thermistorToCelsius(before_radiator_resistance);
+    //Logger::info("Temperature before Radiator: %f", temp_before_Radiator);
 
-    int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
-    double convertedVoltageAfter = (accumulatorTemperatureAnalogReading / 818.0);
+    //int32_t accumulatorTemperatureAnalogReading = systemIO.getAnalogIn(config->accumulatorTemperatureSensorPin);
+    //double convertedVoltageAfter = (accumulatorTemperatureAnalogReading / 818.0);
     // Logger::console("Voltage reading : %f", convertedVoltageAfter);
-    double after_radiator_resistance = (14666 * convertedVoltageAfter) / (5 - convertedVoltageAfter);
+    //double after_radiator_resistance = (14666 * convertedVoltageAfter) / (5 - convertedVoltageAfter);
     // Logger::console("resistance reading : %f", after_radiator_resistance);
-    double temp_after_Radiator = thermistorToCelsius(after_radiator_resistance);
-    Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
+    //double temp_after_Radiator = thermistorToCelsius(after_radiator_resistance);
+    //Logger::info("Temperature after Radiator: %f", temp_after_Radiator);
 
 
     // This chunk of code is commented out because we are not doing dynamic cooling,
     // in the future, if you want to do dynamic cooling, add the specific logic here
     int16_t max_temp_percent = max(motor_temp_percentage, motor_ctrl_temp_percentage);
+    max_temp_percent = 1000;
     if (max_temp_percent >= 1000){
         // motorController->setOpState(1); // disable motor if the temps are greater than 100%. ISSUE ! ! ! ! ! !. This will intefere with the throttle plausibilty stuff
                                             // need a better way to raise faults for the motor but for now since we arent doing anything for that we are chilling.
@@ -321,8 +325,8 @@ void CoolingController::loadConfiguration() {
     
     Device::loadConfiguration(); // call parent
 
-    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 4); 
-    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 5);
+    prefsHandler->read("motorTempeartureSensorPin", &config->motorTemperatureSensorPin, 7); 
+    prefsHandler->read("accumulatorTempeartureSensorPin", &config->accumulatorTemperatureSensorPin, 6);
     prefsHandler->read("waterMotorPin", &config->waterMotorPin, 0);
     prefsHandler->read("radiatorFanPin", &config->radiatorFanPin, 1);
 }

@@ -87,6 +87,16 @@ void StatemachineDevice::setup() {
     bms_msg.id = 0x469;
     bms_msg.buf[0] = 0x00;
 
+    clear_bms_msg.len = 8;
+    clear_bms_msg.id = 0x7e3;
+    clear_bms_msg.buf[0] = 0x01;
+    clear_bms_msg.buf[1] = 0x04;
+    clear_bms_msg.buf[2] = 0x00;
+    clear_bms_msg.buf[3] = 0x00;
+    clear_bms_msg.buf[4] = 0x00;
+    clear_bms_msg.buf[5] = 0x00;
+    clear_bms_msg.buf[6] = 0x00;
+    clear_bms_msg.buf[7] = 0x00;
     /*
       buzz_msg[0] : a value to say hey buzz it up
       buzz_msg[1] : what was the prev state (either 1 or 2) 
@@ -133,34 +143,37 @@ void StatemachineDevice::handleTick() {
  */
 
 
-  tsms       = systemIO.getDigitalIn(5);      // i think this is equivalent to the shutdown
-  r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20
+  tsms       = systemIO.getDigitalIn(2);      // i think this is equivalent to the shutdown
+  r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20 CAN
   brake1        = systemIO.getAnalogIn(0);      // tested analogs austin 6/20
   brake2        = systemIO.getAnalogIn(1);      // tested analogs austin 6/20
-  //Logger::console("brake 1 val: %u", brake1);
-  //Logger::console("brake 2 val: %u", brake2);
+  Logger::console("brake 1 val: %u", brake1);
+  Logger::console("brake 2 val: %u", brake2);
 
   fault_imd       = systemIO.getDigitalIn(0);
   fault_bms       = systemIO.getDigitalIn(1);
+  Logger::console("fault_imd val: %u", fault_imd);
+  Logger::console("fault_bms val: %u", fault_bms);
   
   // tsms  = 1;                                // testing purposes
-  //r2d   = 1;                                // testing purposes
-  fault_imd = 1;
-  fault_bms = 1;
-  if (fault_imd == 0){
-    imd_msg.buf[0] = 0;
-  }
-  else{
+  //r2d  = 1;                                // testing purposes
+
+  //attachedCANBus->sendFrame(clear_bms_msg);
+  if (fault_bms == 0){
     imd_msg.buf[0] = 2;
   }
-  if (fault_bms == 0){
-    bms_msg.buf[0] = 0;
-  }
   else{
+    imd_msg.buf[0] = 0;
+    attachedCANBus->sendFrame(imd_msg);
+  }
+  if (fault_imd != 0){
+    //Logger::console("I sent message\n");
     bms_msg.buf[0] = 2;
   }
-  attachedCANBus->sendFrame(bms_msg);
-  attachedCANBus->sendFrame(imd_msg);
+  else{
+    bms_msg.buf[0] = 0;
+    attachedCANBus->sendFrame(bms_msg);
+  }
   if (brake1 +  brake2 > 1200)  // could be redundance check
   {
     threshold_brake = true;
@@ -170,6 +183,9 @@ void StatemachineDevice::handleTick() {
   }
 
   if (extern_curr_state == S0) {        // state 0, this is tested
+    threshold_brake = 1; //HARDCODED GET OUT OF THIS STATE
+    tsms = 1;
+    r2d = 1;
     if(threshold_brake && tsms && r2d){
       updateState(S1);
       buzz_msg.buf[1] = 1; // set to the first time you send the rdy buzzer
@@ -183,6 +199,7 @@ void StatemachineDevice::handleTick() {
   } else if (extern_curr_state == S1) { // state 1
     attachedCANBus->sendFrame(buzz_msg);
     Logger::console("I sent message\n");
+    dash_val_msg = 1; // HARDCODED
     if (tsms && dash_val_msg) {
       updateState(S2);
     }

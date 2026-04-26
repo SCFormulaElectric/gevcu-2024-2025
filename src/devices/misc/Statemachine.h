@@ -46,6 +46,7 @@ private:
     int8_t dash_send_flag;    // controls when to send message gevcu to dash 
     int8_t dash_val_msg;      // set when we recieve the check from car
     CAN_message_t buzz_msg;
+    CAN_message_t clear_bms_msg;
     CAN_message_t imd_msg;
     CAN_message_t bms_msg;   // the constructed msg to activate buzzer_msg 
                               /* 
