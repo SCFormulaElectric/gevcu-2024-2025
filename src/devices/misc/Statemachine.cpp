@@ -71,6 +71,7 @@ void StatemachineDevice::setup() {
     // set flags
     dash_send_flag = 1;
     dash_val_msg = 0;
+    button_val_msg = 0;
 
     // Constructed message to dashboard
     buzz_msg.len = 2;
@@ -97,6 +98,15 @@ void StatemachineDevice::setup() {
     clear_bms_msg.buf[5] = 0x00;
     clear_bms_msg.buf[6] = 0x00;
     clear_bms_msg.buf[7] = 0x00;
+
+    //redlight blink
+    redlight_msg.len = 1;
+    redlight_msg.id = 0x470;
+    redlight_msg.buf[0] = 0x00;
+    
+    triggerBSPDfault_msg.len = 8;
+    triggerBSPDfault_msg.id = 471;
+
     /*
       buzz_msg[0] : a value to say hey buzz it up
       buzz_msg[1] : what was the prev state (either 1 or 2) 
@@ -127,6 +137,13 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
     if(frame.id == 0x110){ 
         dash_val_msg = 1; 
     }
+        if(frame.id == 0x777){ 
+        button_val_msg = 1; 
+    }
+    else{
+      button_val_msg = 0;
+    }
+    
 }
 DeviceId StatemachineDevice::getId() {
     return (StatemachineID);
@@ -154,11 +171,33 @@ void StatemachineDevice::handleTick() {
   fault_bms       = systemIO.getDigitalIn(1);
   Logger::console("fault_imd val: %u", fault_imd);
   Logger::console("fault_bms val: %u", fault_bms);
+  redlight_msg.buf[0] = 0x00;
+  if (millis() - lastredlightTime > 500){
+    redlight_msg.buf[0] = 0x01;
+    attachedCANBus->sendFrame(redlight_msg);
+    lastredlightTime = millis();
+    Logger::console("red\n");
+  }
+  else{
+    attachedCANBus->sendFrame(redlight_msg);
+  }
+  if (button_val_msg){
+    for (int i = 0; i < 1;i++){
+      Logger::console("RECEIVED\n");
+    }
+  }
   
   // tsms  = 1;                                // testing purposes
   //r2d  = 1;                                // testing purposes
 
   //attachedCANBus->sendFrame(clear_bms_msg);
+  if (!tsms) {
+    triggerBSPDfault_msg.buf[0] = 0x00;
+    attachedCANBus->sendFrame(triggerBSPDfault_msg);
+  } else {
+    triggerBSPDfault_msg.buf[0] = 0x01;
+    attachedCANBus->sendFrame(triggerBSPDfault_msg);
+  }
   if (fault_bms == 0){
     imd_msg.buf[0] = 2;
   }
@@ -200,7 +239,8 @@ void StatemachineDevice::handleTick() {
     attachedCANBus->sendFrame(buzz_msg);
     Logger::console("I sent message\n");
     dash_val_msg = 1; // HARDCODED
-    if (tsms && dash_val_msg) {
+    tsms = 1;
+    if (1) { //hardcoded
       updateState(S2);
     }
     else if (!tsms){
@@ -220,7 +260,7 @@ void StatemachineDevice::handleTick() {
 
   } else if (extern_curr_state == S2) { // state 2
     if(!tsms){
-      updateState(S0);
+      //updateState(S0);
     }
     Logger::console("\n I am in state S2");
   }

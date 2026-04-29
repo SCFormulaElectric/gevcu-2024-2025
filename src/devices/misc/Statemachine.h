@@ -45,8 +45,11 @@ private:
     // State curr_state;        
     int8_t dash_send_flag;    // controls when to send message gevcu to dash 
     int8_t dash_val_msg;      // set when we recieve the check from car
+    int8_t button_val_msg; // can id 0x777 sent on button press
     CAN_message_t buzz_msg;
     CAN_message_t clear_bms_msg;
+    CAN_message_t redlight_msg;
+    CAN_message_t triggerBSPDfault_msg;
     CAN_message_t imd_msg;
     CAN_message_t bms_msg;   // the constructed msg to activate buzzer_msg 
                               /* 
@@ -64,6 +67,7 @@ private:
     int32_t brake2;
     uint32_t fault_imd;
     uint32_t fault_bms;
+    uint32_t lastredlightTime;
     PotBrake *potBrake; // Pointer to a PotBrake instance
 
     

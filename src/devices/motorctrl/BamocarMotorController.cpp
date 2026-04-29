@@ -29,10 +29,10 @@ void BamocarMotorController::setup() {
 
     running = true;
     setPowerMode(modeTorque);
-    setSelectedGear(DRIVE);
+    setSelectedGear(REVERSE);
     setOpState(ENABLE);
 
-    setAttachedCANBus(1);
+    setAttachedCANBus(0);
     //Can Message to Bamocar for the actual speed
     attachedCANBus->attach(this, 0x181, 0xFFF, false);
     
@@ -129,6 +129,9 @@ void BamocarMotorController::handleTick() {
             else{
 
                 mappedMotorTorque = throttleAnalogValue/10 * 20;
+                int16_t signedTorque = (int16_t) mappedMotorTorque;
+                if (selectedGear == REVERSE) 
+                    signedTorque = -signedTorque;
                 uint32_t secondhalf = (mappedMotorTorque & 0xFF);
                 uint32_t firsthalf = ((mappedMotorTorque >> 8));
                 
@@ -157,10 +160,11 @@ void BamocarMotorController::handleTick() {
                 else if (last_sent_value != mappedMotorTorque) //0x31 for speed, 0x90 for torque
                 {
                     var.buf[0] = 0x90;
-                    var.buf[1] = secondhalf;
-                    var.buf[2] = firsthalf; 
+                    var.buf[1] = (uint8_t) (signedTorque & 0xFF);
+                    var.buf[2] = (uint8_t) ((signedTorque >> 8) & 0xFF); 
                     attachedCANBus->sendFrame(var);
                     last_sent_value = mappedMotorTorque;
+                    Logger::console("TORQUE SENT: mapped=%d raw = [0x90, 0x%02X, 0x%02x]", mappedMotorTorque, secondhalf, firsthalf);
                 }
             }
         }
@@ -169,10 +173,10 @@ void BamocarMotorController::handleTick() {
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
-    // Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
-    //                   frame.id, frame.len, 
-    //                   frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
-    //                   frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+     Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
+                       frame.id, frame.len, 
+                       frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
+                       frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
     if (frame.buf[0] == 0x8F){
         if (frame.buf[1] == 0x20){ // mains voltage low, just clear it
             //this is the command to clear the error list
