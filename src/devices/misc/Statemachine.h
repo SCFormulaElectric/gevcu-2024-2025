@@ -11,7 +11,7 @@
 
 #define StatemachineID 0x1039
 // #define StatemachineTickInt 1000000
-#define StatemachineTickInt 500000
+#define StatemachineTickInt 10000
 
 enum State {
     S0,
@@ -49,9 +49,14 @@ private:
     CAN_message_t buzz_msg;
     CAN_message_t clear_bms_msg;
     CAN_message_t redlight_msg;
+    CAN_message_t motecbuzztrg_msg;
     CAN_message_t triggerBSPDfault_msg;
     CAN_message_t imd_msg;
-    CAN_message_t bms_msg;   // the constructed msg to activate buzzer_msg 
+    CAN_message_t bms_msg; 
+    CAN_message_t R2D_msg;
+    CAN_message_t SOC_msg;
+    CAN_message_t CUR_msg;
+      // the constructed msg to activate buzzer_msg 
                               /* 
                                 NOTE: there needs to be a check in the dash 
                                     that it'll only buzz once when recieved for the first time
@@ -68,6 +73,20 @@ private:
     uint32_t fault_imd;
     uint32_t fault_bms;
     uint32_t lastredlightTime;
+    uint32_t imdFault_latch;
+    uint32_t faultCounter1;
+    uint32_t testTime01; // to add delays for debugging purposes
+    uint32_t imdFaultBlind; // to add delays for debugging purposes
+    uint32_t btnPress;
+    uint32_t soundFlag; //buzz has to be sent in loop so this flag is triggered by R2D
+    uint32_t soundTime;
+    uint32_t clearBmsonStartFlag;
+    uint32_t LV_SOC; 
+    uint32_t redlighttoggleflag;
+    uint16_t current_value;
+    uint16_t SOC_value;
+    uint32_t bms_fault_register;
+
     PotBrake *potBrake; // Pointer to a PotBrake instance
 
     

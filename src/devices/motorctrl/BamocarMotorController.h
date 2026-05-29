@@ -93,6 +93,10 @@ private:
     int last_sent_value;
     int mappedMotorTorque;
     bool errorClear;
+    uint32_t lastTempSendTime;
+    int16_t motorTemperature;
+    CAN_message_t motorTempMsg;
+    CAN_message_t RequestDCMsg;
 };
 
 #endif /* DMOC_H_ */

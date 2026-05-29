@@ -26,6 +26,7 @@
 
 #include "PotThrottle.h"
 #include "../motorctrl/MotorController.h"
+#include"../misc/Statemachine.h"
 
 
 /*
@@ -108,6 +109,7 @@ void PotThrottle::handleTick() {
         fault_brake_throttle_engaged = true;
         Logger::info("Brake engaged while throttle > 25%% — initiating motor shutdown.");
         motorController->setOpState(MotorController::PLAUSIBILITY_ERROR);
+        //extern_curr_state = S0;
     }
 
     if (fault_brake_throttle_engaged) {
@@ -116,6 +118,7 @@ void PotThrottle::handleTick() {
             Logger::info("Throttle < 5%% — resuming regular operation.");
             fault_brake_throttle_engaged = false;
             motorController->setOpState(MotorController::ENABLE);
+            
         }
         // else {
         //     if (motorController->getOpState() == MotorController::ENABLE) {

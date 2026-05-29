@@ -72,6 +72,15 @@ void StatemachineDevice::setup() {
     dash_send_flag = 1;
     dash_val_msg = 0;
     button_val_msg = 0;
+    btnPress = 0;
+    imdFault_latch = 0;
+    tsms = 0;
+    soundFlag = 0;
+    clearBmsonStartFlag = 0;
+    redlighttoggleflag = 0;
+    current_value = 0;
+    SOC_value = 0;
+    bms_fault_register = 0;
 
     // Constructed message to dashboard
     buzz_msg.len = 2;
@@ -103,9 +112,26 @@ void StatemachineDevice::setup() {
     redlight_msg.len = 1;
     redlight_msg.id = 0x470;
     redlight_msg.buf[0] = 0x00;
+    motecbuzztrg_msg.len = 1;
+    motecbuzztrg_msg.id = 0x471;
+    motecbuzztrg_msg.buf[0] = 0x00;
     
-    triggerBSPDfault_msg.len = 8;
-    triggerBSPDfault_msg.id = 471;
+    triggerBSPDfault_msg.len = 1;
+    triggerBSPDfault_msg.id = 0x471;
+
+    R2D_msg.len = 2;
+    R2D_msg.id = 0x475;
+    R2D_msg.buf[0] = 0x01;
+    imdFaultBlind = millis();
+    
+    CUR_msg.id = 0x799;
+    CUR_msg.len = 2;
+
+    SOC_msg.id = 0x798;
+    SOC_msg.len = 2;
+
+
+    
 
     /*
       buzz_msg[0] : a value to say hey buzz it up
@@ -134,15 +160,40 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
       frame.buf[1] : what state the dash recieved is in 
       frame.buf[2] : idk a check sum (not needed honestly)
     */
-    if(frame.id == 0x110){ 
-        dash_val_msg = 1; 
-    }
+   
         if(frame.id == 0x777){ 
+          Logger::console("0x777 val: %u", frame.buf[0]);
         button_val_msg = 1; 
     }
-    else{
-      button_val_msg = 0;
+      else{
+        button_val_msg = 0;
+      }
+      if (frame.id == 0x301){
+        current_value = (frame.buf[0] << 8) | frame.buf[1];
+        CUR_msg.buf[0] = frame.buf[0];
+        CUR_msg.buf[1] = frame.buf[1];
+        attachedCANBus->sendFrame(CUR_msg);
+        Logger::console("Current val: %u", current_value);
+      }
+
+      if (frame.id== 0x302){
+        SOC_value = (frame.buf[0] <<8) | frame.buf[1];
+        SOC_msg.buf[0] = frame.buf[0];
+        SOC_msg.buf[1] = frame.buf[1];
+        attachedCANBus->sendFrame(SOC_msg);
+        Logger::console("SOC: %u", SOC_value);
+      }
+      if (frame.id == 0x303) {
+    bms_fault_register = ((uint32_t)frame.buf[0] << 24) | ((uint32_t)frame.buf[1] << 16)
+                       | ((uint32_t)frame.buf[2] << 8)  |  (uint32_t)frame.buf[3];
+    if (bms_fault_register & 0x01000000) {
+        Logger::error("BMS P0A1F: Internal Cell Communication Fault");
     }
+    if (bms_fault_register == 0x01000000) {
+    // P0A1F is the only active fault
+    //attachedCANBus->sendFrame(clear_bms_msg);
+}
+}
     
 }
 DeviceId StatemachineDevice::getId() {
@@ -159,45 +210,104 @@ void StatemachineDevice::handleTick() {
  *  read in the values
  */
 
-
   tsms       = systemIO.getDigitalIn(2);      // i think this is equivalent to the shutdown
+  
   r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20 CAN
   brake1        = systemIO.getAnalogIn(0);      // tested analogs austin 6/20
   brake2        = systemIO.getAnalogIn(1);      // tested analogs austin 6/20
-  Logger::console("brake 1 val: %u", brake1);
-  Logger::console("brake 2 val: %u", brake2);
+  LV_SOC        = systemIO.getAnalogIn(4);
+  //Logger::console("brake 1 val: %u", brake1);
+  //Logger::console("brake 2 val: %u", brake2);
+  //Logger::console("soc val: %u", LV_SOC);
 
-  fault_imd       = systemIO.getDigitalIn(0);
-  fault_bms       = systemIO.getDigitalIn(1);
-  Logger::console("fault_imd val: %u", fault_imd);
-  Logger::console("fault_bms val: %u", fault_bms);
-  redlight_msg.buf[0] = 0x00;
-  if (millis() - lastredlightTime > 500){
-    redlight_msg.buf[0] = 0x01;
-    attachedCANBus->sendFrame(redlight_msg);
-    lastredlightTime = millis();
-    Logger::console("red\n");
+  if (millis() - imdFaultBlind > 30000){
+      fault_imd       = systemIO.getDigitalIn(0); //um for us its inverted.
   }
   else{
-    attachedCANBus->sendFrame(redlight_msg);
+    fault_imd = 1;
   }
-  if (button_val_msg){
-    for (int i = 0; i < 1;i++){
-      Logger::console("RECEIVED\n");
+
+  fault_bms       = systemIO.getDigitalIn(1);
+  //Logger::console("fault_imd val: %u", fault_imd);
+  //Logger::console("fault_bms val: %u", fault_bms);
+  
+  
+  if (!fault_imd){ //debounce imdFault. If it persists for 2 iterations (200ms) set FaultLatch
+    faultCounter1++;
+    if (faultCounter1 > 1){
+      imdFault_latch = 1;
     }
+  }
+  //if (millis() - testTime01 > 4000){
+  //  tsms ^= 1;
+  //  testTime01 = millis();
+  //}
+  if (tsms){
+    Logger::console("tsms");
+    if (imdFault_latch == 0){
+      //Logger::console("sanity check\n");
+      triggerBSPDfault_msg.buf[0] = 0x01;
+      attachedCANBus->sendFrame(triggerBSPDfault_msg);
+      Logger::console("light should be green \n");
+    }
+  }
+  else{
+    triggerBSPDfault_msg.buf[0] = 0x00;
+    //attachedCANBus->sendFrame(triggerBSPDfault_msg);
+  }
+
+  if (imdFault_latch){
+
+      if (millis() - lastredlightTime > 250){
+        if (redlighttoggleflag == 1){
+            redlight_msg.buf[0] ^= 0x01;
+            redlighttoggleflag = 0;
+            //Logger::console("sanity\n");
+        }
+        else {
+          redlighttoggleflag = 1;
+          redlight_msg.buf[0] ^= 0x00;
+          //Logger::console(" check\n");
+        }
+      attachedCANBus->sendFrame(redlight_msg);
+      lastredlightTime = millis();
+      }
+
+      else{
+        redlight_msg.buf[0] = 0x00;
+      //attachedCANBus->sendFrame(redlight_msg); 
+
+      triggerBSPDfault_msg.buf[0] = 0x00;
+      attachedCANBus->sendFrame(triggerBSPDfault_msg);
+      }
+  }
+
+  /*if (tsms != 1){
+    motecbuzztrg_msg.buf[0] = 1;
+    attachedCANBus->sendFrame(motecbuzztrg_msg);
+  }
+  else{
+    motecbuzztrg_msg.buf[0] = 0;
+    attachedCANBus->sendFrame(motecbuzztrg_msg);
+  }
+    */
+  if (button_val_msg){
+      Logger::console("RECEIVED\n");
+      btnPress = 1;
   }
   
   // tsms  = 1;                                // testing purposes
   //r2d  = 1;                                // testing purposes
+  if (clearBmsonStartFlag == 0){
+    clearBmsonStartFlag = 1;
+    for (int i = 0; i <3; i++){
+      attachedCANBus->sendFrame(clear_bms_msg);
+    }
 
-  //attachedCANBus->sendFrame(clear_bms_msg);
-  if (!tsms) {
-    triggerBSPDfault_msg.buf[0] = 0x00;
-    attachedCANBus->sendFrame(triggerBSPDfault_msg);
-  } else {
-    triggerBSPDfault_msg.buf[0] = 0x01;
-    attachedCANBus->sendFrame(triggerBSPDfault_msg);
+    
   }
+  //attachedCANBus->sendFrame(clear_bms_msg);
+
   if (fault_bms == 0){
     imd_msg.buf[0] = 2;
   }
@@ -205,7 +315,7 @@ void StatemachineDevice::handleTick() {
     imd_msg.buf[0] = 0;
     attachedCANBus->sendFrame(imd_msg);
   }
-  if (fault_imd != 0){
+  if (imdFault_latch == 0){
     //Logger::console("I sent message\n");
     bms_msg.buf[0] = 2;
   }
@@ -213,54 +323,33 @@ void StatemachineDevice::handleTick() {
     bms_msg.buf[0] = 0;
     attachedCANBus->sendFrame(bms_msg);
   }
-  if (brake1 +  brake2 > 1200)  // could be redundance check
-  {
-    threshold_brake = true;
+  if (brake1 +  brake2 > 1000) { threshold_brake = true;}
+  else {  threshold_brake = false; }
+
+  if (extern_curr_state != S2 && threshold_brake && btnPress && tsms && imdFault_latch == 0){
+     updateState(S2);
+     btnPress = 0;
+     button_val_msg = 0;
+     soundFlag = 1;
+     R2D_msg.buf[0] = 0x01;
+     attachedCANBus->sendFrame(R2D_msg);
+     soundTime = millis();
+    }
+    if (extern_curr_state != S2){ //might be able to remove this.
+    btnPress = 0;
+    button_val_msg = 0;
   }
-  else {
-    threshold_brake = false;
-  }
 
-  if (extern_curr_state == S0) {        // state 0, this is tested
-    threshold_brake = 1; //HARDCODED GET OUT OF THIS STATE
-    tsms = 1;
-    r2d = 1;
-    if(threshold_brake && tsms && r2d){
-      updateState(S1);
-      buzz_msg.buf[1] = 1; // set to the first time you send the rdy buzzer
-    } else {
+    if (millis() -soundTime > 1500){
+      R2D_msg.buf[0] = 0x00;
+      attachedCANBus->sendFrame(R2D_msg);
+    }
+     
+  
+  if (extern_curr_state == S2) { // state 2
+    if(!tsms || imdFault_latch){
       updateState(S0);
-    }
-    //Logger::console("I am in state S0");
-    //Logger::console("TSMS: %d, R2D: %d", tsms, r2d);
-    // Logger::console("end \n ");
-
-  } else if (extern_curr_state == S1) { // state 1
-    attachedCANBus->sendFrame(buzz_msg);
-    Logger::console("I sent message\n");
-    dash_val_msg = 1; // HARDCODED
-    tsms = 1;
-    if (1) { //hardcoded
-      updateState(S2);
-    }
-    else if (!tsms){
-      updateState(S0);
-    }
-
-    Logger::console(" I am in state S1\n");
-
-   /*
-    * As long as the tsms && brake && r2d are all valid
-    * Then proceeed to S2, else we'll have to replay this again
-    * It assumes that you have the brakes depressed in state 2, you might
-    * beable to get rid of it
-    * Note: I might need a timer on the redundancy and count some cycles
-    * before returning to s0
-    */
-
-  } else if (extern_curr_state == S2) { // state 2
-    if(!tsms){
-      //updateState(S0);
+      btnPress = 0;
     }
     Logger::console("\n I am in state S2");
   }

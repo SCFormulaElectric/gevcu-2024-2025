@@ -34,8 +34,8 @@ void BamocarMotorController::setup() {
 
     setAttachedCANBus(0);
     //Can Message to Bamocar for the actual speed
+    //attachedCANBus->attach(this, 0x181, 0xFFF, false);
     attachedCANBus->attach(this, 0x181, 0xFFF, false);
-    
     tickHandler.attach(this, CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR);
 
     // on start up make sure that the car is not locked up
@@ -82,6 +82,18 @@ void BamocarMotorController::setup() {
     mappedMotorTorque = 0;
 
     errorClear = false;
+    motorTemperature = 0;
+    lastTempSendTime = 0;
+    RequestDCMsg.len = 8;
+    RequestDCMsg.id = 0x201;
+    RequestDCMsg.buf[0] = 0xEB;
+    RequestDCMsg.buf[1] = 0x3D;
+    RequestDCMsg.buf[2] = 0X00;
+    RequestDCMsg.buf[3] = 0x00;
+    RequestDCMsg.buf[4] = 0x00;
+    RequestDCMsg.buf[5] = 0x00;
+    RequestDCMsg.buf[6] = 0x00;
+    RequestDCMsg.buf[7] = 0x00;
 }
 
 
@@ -90,7 +102,18 @@ void BamocarMotorController::handleTick() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     MotorController::handleTick();
 
+    attachedCANBus->sendFrame(RequestDCMsg);
+    if (millis() - lastTempSendTime > 3000) {
+        uint16_t tempC = (uint16_t)((motorTemperature - 9369) / 55.21f);
+        motorTempMsg.id = 0x476;
+        motorTempMsg.len = 2;
+        motorTempMsg.buf[0] = (tempC >> 8) & 0xFF;
+        motorTempMsg.buf[1] = tempC & 0xFF;
+        attachedCANBus->sendFrame(motorTempMsg);
+        lastTempSendTime = millis();
+    }
     if (getOpState() == THROTTLE_ERROR){
+        extern_curr_state = S0;
         Logger::info("throttle errored");
         if (!disable_sent){
             attachedCANBus->sendFrame(freeRolling);
@@ -120,6 +143,10 @@ void BamocarMotorController::handleTick() {
             {
                 throttleAnalogValue = 0;
                 if(!disable_sent){
+                    var.buf[0] = 0x90;
+                    var.buf[1] = 0x00;
+                    var.buf[2] = 0x00;
+                    attachedCANBus->sendFrame(var);
                     attachedCANBus -> sendFrame(freeRolling);
                     last_sent_value = 0;
                     disable_sent = true;
@@ -134,6 +161,20 @@ void BamocarMotorController::handleTick() {
                     signedTorque = -signedTorque;
                 uint32_t secondhalf = (mappedMotorTorque & 0xFF);
                 uint32_t firsthalf = ((mappedMotorTorque >> 8));
+    //shit
+                int16_t commandedTorqueNm = 0;
+
+                
+    if (extern_curr_state == S2 && getOpState() == ENABLE) {
+        commandedTorqueNm = (uint16_t)((throttleAnalogValue / 1000.0f) * config->torqueMax);
+    }
+    CAN_message_t torqueNmMsg;
+    torqueNmMsg.id = 0x473;
+    torqueNmMsg.len = 2;
+    torqueNmMsg.buf[0] = (commandedTorqueNm >> 8) & 0xFF;
+    torqueNmMsg.buf[1] = commandedTorqueNm & 0xFF;
+    attachedCANBus->sendFrame(torqueNmMsg);
+//end of shit
                 
                 if (!enable_sent){
                     //Transmitting transmission request BTB
@@ -173,10 +214,14 @@ void BamocarMotorController::handleTick() {
 }
 
 void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
+    //Logger::console("RAW id=%X mask_test=%X", frame.id, frame.id & 0xFFF);
+
+    /*
      Logger::info("Test id=%X len=%X data=%X,%X,%X,%X,%X,%X,%X,%X",
                        frame.id, frame.len, 
                        frame.buf[0], frame.buf[1], frame.buf[2], frame.buf[3],
                        frame.buf[4], frame.buf[5], frame.buf[6], frame.buf[7]);
+           */            
     if (frame.buf[0] == 0x8F){
         if (frame.buf[1] == 0x20){ // mains voltage low, just clear it
             //this is the command to clear the error list
@@ -186,6 +231,13 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
             attachedCANBus->sendFrame(var);
         }
     }
+    if (frame.buf[0] == 0x49) {
+    motorTemperature = (int16_t)(frame.buf[1] | (frame.buf[2] << 8));
+    float motorTempC = (motorTemperature - 9369) / 55.21f;
+    //Logger::console("Motor temp: %.1f C", motorTempC);
+    }
+
+
 }
 
 void BamocarMotorController::setGear(Gears gear) {
