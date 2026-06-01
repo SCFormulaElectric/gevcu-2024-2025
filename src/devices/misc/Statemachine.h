@@ -85,7 +85,6 @@ private:
     uint32_t redlighttoggleflag;
     uint16_t current_value;
     uint16_t SOC_value;
-    uint32_t bms_fault_register;
 
     PotBrake *potBrake; // Pointer to a PotBrake instance
 

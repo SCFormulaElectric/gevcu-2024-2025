@@ -155,7 +155,8 @@ void BamocarMotorController::handleTick() {
             }
             else{
 
-                mappedMotorTorque = throttleAnalogValue/10 * 20;
+                //mappedMotorTorque = throttleAnalogValue/10 * 20;
+                mappedMotorTorque = (int32_t)throttleAnalogValue * 0x6000 / 1000; //thutapea: check to see if this remap is good
                 int16_t signedTorque = (int16_t) mappedMotorTorque;
                 if (selectedGear == REVERSE) 
                     signedTorque = -signedTorque;

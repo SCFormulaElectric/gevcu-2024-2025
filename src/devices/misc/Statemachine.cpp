@@ -1,6 +1,6 @@
 #include "Statemachine.h"
 #include "../io/PotBrake.h"
-
+#include "BmsClearer.h"
 
 /*
   TODO: 
@@ -80,7 +80,7 @@ void StatemachineDevice::setup() {
     redlighttoggleflag = 0;
     current_value = 0;
     SOC_value = 0;
-    bms_fault_register = 0;
+
 
     // Constructed message to dashboard
     buzz_msg.len = 2;
@@ -164,6 +164,7 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         if(frame.id == 0x777){ 
           Logger::console("0x777 val: %u", frame.buf[0]);
         button_val_msg = 1; 
+        attachedCANBus->sendFrame(clear_bms_msg);
     }
       else{
         button_val_msg = 0;
@@ -183,17 +184,17 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         attachedCANBus->sendFrame(SOC_msg);
         Logger::console("SOC: %u", SOC_value);
       }
-      if (frame.id == 0x303) {
-    bms_fault_register = ((uint32_t)frame.buf[0] << 24) | ((uint32_t)frame.buf[1] << 16)
-                       | ((uint32_t)frame.buf[2] << 8)  |  (uint32_t)frame.buf[3];
-    if (bms_fault_register & 0x01000000) {
-        Logger::error("BMS P0A1F: Internal Cell Communication Fault");
-    }
-    if (bms_fault_register == 0x01000000) {
-    // P0A1F is the only active fault
-    //attachedCANBus->sendFrame(clear_bms_msg);
-}
-}
+//      if (frame.id == 0x303) {
+//    bms_fault_register = ((uint32_t)frame.buf[0] << 24) | ((uint32_t)frame.buf[1] << 16)
+//                       | ((uint32_t)frame.buf[2] << 8)  |  (uint32_t)frame.buf[3];
+//    if (bms_fault_register & 0x01000000) {
+//        Logger::error("BMS P0A1F: Internal Cell Communication Fault");
+//    }
+//    if (bms_fault_register == 0x01000000) {
+//    // P0A1F is the only active fault
+//    //attachedCANBus->sendFrame(clear_bms_msg);
+//}
+//}
     
 }
 DeviceId StatemachineDevice::getId() {
@@ -205,6 +206,7 @@ DeviceType StatemachineDevice::getType() {
 }
 
 void StatemachineDevice::handleTick() {
+  //attachedCANBus->sendFrame(clear_bms_msg);
 
 /*
  *  read in the values
@@ -228,27 +230,29 @@ void StatemachineDevice::handleTick() {
   }
 
   fault_bms       = systemIO.getDigitalIn(1);
+  //fault_bms = bms_fault_delayed;
   //Logger::console("fault_imd val: %u", fault_imd);
   //Logger::console("fault_bms val: %u", fault_bms);
   
   
   if (!fault_imd){ //debounce imdFault. If it persists for 2 iterations (200ms) set FaultLatch
     faultCounter1++;
-    if (faultCounter1 > 1){
+  }
+
+      if (faultCounter1 > 1){ //thutapea: sloppy way to include BMS fault in TSSI state
       imdFault_latch = 1;
     }
-  }
   //if (millis() - testTime01 > 4000){
   //  tsms ^= 1;
   //  testTime01 = millis();
   //}
   if (tsms){
-    Logger::console("tsms");
+    //Logger::console("tsms");
     if (imdFault_latch == 0){
       //Logger::console("sanity check\n");
       triggerBSPDfault_msg.buf[0] = 0x01;
       attachedCANBus->sendFrame(triggerBSPDfault_msg);
-      Logger::console("light should be green \n");
+      //Logger::console("light should be green \n");
     }
   }
   else{
@@ -256,7 +260,7 @@ void StatemachineDevice::handleTick() {
     //attachedCANBus->sendFrame(triggerBSPDfault_msg);
   }
 
-  if (imdFault_latch){
+  if (imdFault_latch || fault_bms){
 
       if (millis() - lastredlightTime > 250){
         if (redlighttoggleflag == 1){
@@ -302,6 +306,7 @@ void StatemachineDevice::handleTick() {
     clearBmsonStartFlag = 1;
     for (int i = 0; i <3; i++){
       attachedCANBus->sendFrame(clear_bms_msg);
+      Logger::console("CLEARED BMS FROM STATEMACHINE ON START");
     }
 
     
@@ -310,6 +315,7 @@ void StatemachineDevice::handleTick() {
 
   if (fault_bms == 0){
     imd_msg.buf[0] = 2;
+    Logger::console("fault_bms is 0");
   }
   else{
     imd_msg.buf[0] = 0;
