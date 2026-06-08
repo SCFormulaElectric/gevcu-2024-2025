@@ -229,7 +229,7 @@ void StatemachineDevice::handleTick() {
     fault_imd = 1;
   }
 
-  fault_bms       = systemIO.getDigitalIn(1);
+  fault_bms       = systemIO.getDigitalIn(1) || bms_fault_delayed;
   //fault_bms = bms_fault_delayed;
   //Logger::console("fault_imd val: %u", fault_imd);
   //Logger::console("fault_bms val: %u", fault_bms);
@@ -315,7 +315,7 @@ void StatemachineDevice::handleTick() {
 
   if (fault_bms == 0){
     imd_msg.buf[0] = 2;
-    Logger::console("fault_bms is 0");
+    //Logger::console("fault_bms is 0");
   }
   else{
     imd_msg.buf[0] = 0;
@@ -346,7 +346,7 @@ void StatemachineDevice::handleTick() {
     button_val_msg = 0;
   }
 
-    if (millis() -soundTime > 1500){
+    if (millis() -soundTime > 5500){
       R2D_msg.buf[0] = 0x00;
       attachedCANBus->sendFrame(R2D_msg);
     }
@@ -357,7 +357,7 @@ void StatemachineDevice::handleTick() {
       updateState(S0);
       btnPress = 0;
     }
-    Logger::console("\n I am in state S2");
+    //Logger::console("\n I am in state S2");
   }
 }
 

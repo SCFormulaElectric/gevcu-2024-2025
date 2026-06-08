@@ -104,7 +104,12 @@ void CoolingController::handleTick() {
 
 
     CoolingControllerConfiguration *config = (CoolingControllerConfiguration *) getConfiguration();
-    systemIO.setDigitalOutputPWM(0, 10, 970);
+    //systemIO.setDigitalOutput(2, true);
+    //systemIO.setDigitalOutput(0, true);
+    
+    systemIO.setDigitalOutputPWM(2, 10, 970); //
+    Logger::console("Set pwmm on f3");
+    //systemIO.setDigitalOutputPWM(1, 1, 500); //
     //Logger::console("check 97%\n");
 
     // Retrieve the temperature of the motor and the accumulator

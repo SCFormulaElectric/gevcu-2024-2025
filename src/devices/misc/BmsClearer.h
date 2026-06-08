@@ -35,6 +35,13 @@ private:
     CAN_message_t MaxCellTmpMsg;
     uint8_t maxtempvalue;
     uint32_t faultClearDelay;
+    uint32_t overTempStart;
+
+
+    uint32_t lastMsg18EEFF80;  // expected every 200ms
+    uint32_t lastMsg1839F380;  // expected every 100ms
+    bool timeout18EEFF80;
+    bool timeout1839F380;
 };
 
 #endif
