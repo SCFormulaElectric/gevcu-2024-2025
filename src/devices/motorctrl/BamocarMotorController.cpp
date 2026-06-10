@@ -114,7 +114,7 @@ void BamocarMotorController::handleTick() {
     }
     if (getOpState() == THROTTLE_ERROR){
         extern_curr_state = S0;
-        Logger::info("throttle errored");
+        //Logger::info("throttle errored");
         if (!disable_sent){
             attachedCANBus->sendFrame(freeRolling);
             last_sent_value = 0;

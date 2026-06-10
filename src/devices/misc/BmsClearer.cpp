@@ -59,6 +59,38 @@ void BmsClearer::setup() {
     faultClearDelay = 0;
     overTempStart = 0;
 
+    // EDIT START - Bamocar RPM reading setup
+    attachedCANBus->attach(this, 0x181, 0xFFF, false);
+
+    bamocarRequest.len = 3;
+    bamocarRequest.id = 0x201;
+
+    // Request N-100% (Nmax) once — reply tells us what rpm = 32767
+    bamocarRequest.buf[0] = 0x3D;
+    bamocarRequest.buf[1] = 0xC8;
+    bamocarRequest.buf[2] = 0x00;
+    attachedCANBus->sendFrame(bamocarRequest);
+
+    nmaxRpm = 0;
+    nmaxReceived = false;
+    speedNum = 0;
+    currentRpm = 0;
+
+    rpmMsg.id = 0x474;
+    rpmMsg.len = 2;
+    rpmMsg.buf[0] = 0;
+    rpmMsg.buf[1] = 0;
+    // EDIT END
+
+    // EDIT START - Bamocar diagnostics init
+    bamo_iist = 0;
+    bamo_status = 0;
+    bamo_ramp = 0;
+    bamo_imax = 0;
+    bamo_imaxpk = 0;
+    bamo_icon = 0;
+    bamo_staticReceived = false;
+    // EDIT END
 }
 
 void BmsClearer::handleTick() {
@@ -103,9 +135,45 @@ void BmsClearer::handleTick() {
     attachedCANBus->sendFrame(faultNumMsg);
     MaxCellTmpMsg.buf[0] = maxtempvalue;
     attachedCANBus->sendFrame(MaxCellTmpMsg);
-    Logger::console("BMS Fault #%d active | CAN timeouts: %s %s", faultNum,
+    // EDIT START - send RPM on 0x474 (big-endian int16)
+    int16_t rpmOut = (int16_t)currentRpm;
+    rpmMsg.buf[0] = (rpmOut >> 8) & 0xFF;
+    rpmMsg.buf[1] = rpmOut & 0xFF;
+    attachedCANBus->sendFrame(rpmMsg);
+    // EDIT END
+    Logger::console("BMS Fault #%d active | CAN timeouts: %s %s | Motor RPM: %ld", faultNum,
         timeout18EEFF80 ? "18EEFF80!" : "18EEFF80-ok",
-        timeout1839F380 ? "1839F380!" : "1839F380-ok");
+        timeout1839F380 ? "1839F380!" : "1839F380-ok",
+        currentRpm);
+
+    // EDIT START - re-request Nmax if not yet received
+    if (!nmaxReceived) {
+        bamocarRequest.buf[0] = 0x3D;
+        bamocarRequest.buf[1] = 0xC8;
+        bamocarRequest.buf[2] = 0x00;
+        attachedCANBus->sendFrame(bamocarRequest);
+    }
+    // EDIT END
+
+    // EDIT START - Bamocar diagnostic requests (1Hz)
+    // Static params: request until received
+    if (!bamo_staticReceived) {
+        uint8_t staticRegs[] = { 0x25, 0x4D, 0xC4, 0xC5 };
+        for (uint8_t r : staticRegs) {
+            bamocarRequest.buf[0] = 0x3D;
+            bamocarRequest.buf[1] = r;
+            bamocarRequest.buf[2] = 0x00;
+            attachedCANBus->sendFrame(bamocarRequest);
+        }
+    }
+    // Dynamic params: request every tick
+    bamocarRequest.buf[0] = 0x3D;
+    bamocarRequest.buf[1] = 0x20;  // I_IST actual current
+    bamocarRequest.buf[2] = 0x00;
+    attachedCANBus->sendFrame(bamocarRequest);
+    bamocarRequest.buf[1] = 0xA0;  // status word
+    attachedCANBus->sendFrame(bamocarRequest);
+    // EDIT END
 
     if (maxtempvalue > 60) {
     if (overTempStart == 0) overTempStart = millis();
@@ -164,6 +232,50 @@ void BmsClearer::handleCanFrame(const CAN_message_t &frame) {
             pos += snprintf(buf + pos, sizeof(buf) - pos, "<%02X> ", frame.buf[i]);
         Logger::console("0x1839F386 frame[%d]: %s", frameIdx, buf);
     }
+    // EDIT START - Bamocar RPM reading + diagnostics
+    if (frame.id == 0x181 && frame.len >= 3) {
+        int16_t val = (int16_t)((uint16_t)frame.buf[1] | ((uint16_t)frame.buf[2] << 8));
+        switch (frame.buf[0]) {
+            case 0xC8:
+                nmaxRpm = val;
+                nmaxReceived = true;
+                Logger::info("BmsClearer: Bamocar Nmax = %d rpm", nmaxRpm);
+                break;
+            case 0x30:
+                speedNum = val;
+                if (nmaxReceived && nmaxRpm != 0)
+                    currentRpm = (int32_t)((speedNum / 32767.0f) * nmaxRpm);
+                break;
+            case 0x20:
+                bamo_iist = val;
+                Logger::console("BAMO I_IST(actual current): %d", bamo_iist);
+                break;
+            case 0xA0:
+                bamo_status = (uint16_t)val;
+                Logger::console("BAMO STATUS: 0x%04X", bamo_status);
+                break;
+            case 0x25:
+                bamo_ramp = val;
+                Logger::info("BAMO RAMP: %d", bamo_ramp);
+                break;
+            case 0x4D:
+                bamo_imax = val;
+                Logger::info("BAMO I_MAX: %d", bamo_imax);
+                break;
+            case 0xC4:
+                bamo_imaxpk = val;
+                Logger::info("BAMO I_MAX_PK: %d", bamo_imaxpk);
+                break;
+            case 0xC5:
+                bamo_icon = val;
+                Logger::info("BAMO I_CON_EFF: %d", bamo_icon);
+                if (!bamo_staticReceived && bamo_ramp != 0 && bamo_imax != 0 && bamo_imaxpk != 0)
+                    bamo_staticReceived = true;
+                break;
+        }
+    }
+    // EDIT END
+
     if (frame.id >= 0x1839F381 && frame.id <= 0x1839F385) {
         uint8_t frameIdx = frame.id - 0x1839F381;  // 0–4
         uint8_t base = frameIdx * 8;               // thermistor index 0, 8, 16, 24, 32
