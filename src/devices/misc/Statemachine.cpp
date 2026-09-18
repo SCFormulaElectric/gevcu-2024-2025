@@ -78,6 +78,8 @@ void StatemachineDevice::setup() {
     soundFlag = 0;
     clearBmsonStartFlag = 0;
     redlighttoggleflag = 0;
+    redFaultLatch = 0;
+    faultCounter2 = 0;
     current_value = 0;
     SOC_value = 0;
 
@@ -211,7 +213,6 @@ void StatemachineDevice::handleTick() {
 /*
  *  read in the values
  */
-
   tsms       = systemIO.getDigitalIn(2);      // i think this is equivalent to the shutdown
   
   r2d        = systemIO.getDigitalIn(4);      // tested analogs austin 6/20 CAN
@@ -229,7 +230,8 @@ void StatemachineDevice::handleTick() {
     fault_imd = 1;
   }
 
-  fault_bms       = systemIO.getDigitalIn(1) || bms_fault_delayed;
+  if (systemIO.getDigitalIn(1)) { faultCounter2++; } else { faultCounter2 = 0; }
+  fault_bms       = (faultCounter2 > 1) || bms_fault_delayed;
   //fault_bms = bms_fault_delayed;
   //Logger::console("fault_imd val: %u", fault_imd);
   //Logger::console("fault_bms val: %u", fault_bms);
@@ -250,41 +252,39 @@ void StatemachineDevice::handleTick() {
     //Logger::console("tsms");
     if (imdFault_latch == 0){
       //Logger::console("sanity check\n");
-      triggerBSPDfault_msg.buf[0] = 0x01;
-      attachedCANBus->sendFrame(triggerBSPDfault_msg);
+      //triggerBSPDfault_msg.buf[0] = 0x01;
+      //attachedCANBus->sendFrame(triggerBSPDfault_msg);
       //Logger::console("light should be green \n");
     }
   }
   else{
-    triggerBSPDfault_msg.buf[0] = 0x00;
+    //triggerBSPDfault_msg.buf[0] = 0x00;
     //attachedCANBus->sendFrame(triggerBSPDfault_msg);
   }
+  if (imdFault_latch || fault_bms) {
+    redFaultLatch = 1;
+  }
 
-  if (imdFault_latch || fault_bms){
+  triggerBSPDfault_msg.buf[0] = 0x01;
+  if (redFaultLatch) {
+    triggerBSPDfault_msg.buf[0] = 0x00;
 
-      if (millis() - lastredlightTime > 250){
-        if (redlighttoggleflag == 1){
-            redlight_msg.buf[0] ^= 0x01;
-            redlighttoggleflag = 0;
-            //Logger::console("sanity\n");
-        }
-        else {
-          redlighttoggleflag = 1;
-          redlight_msg.buf[0] ^= 0x00;
-          //Logger::console(" check\n");
-        }
+    if (millis() - lastredlightTime > 125) {
+      if (redlighttoggleflag == 1) {
+        redlight_msg.buf[0] ^= 0x01;
+        redlighttoggleflag = 0;
+      } else {
+        redlighttoggleflag = 1;
+        redlight_msg.buf[0] ^= 0x00;
+      }
       attachedCANBus->sendFrame(redlight_msg);
       lastredlightTime = millis();
-      }
-
-      else{
-        redlight_msg.buf[0] = 0x00;
-      //attachedCANBus->sendFrame(redlight_msg); 
-
-      triggerBSPDfault_msg.buf[0] = 0x00;
-      attachedCANBus->sendFrame(triggerBSPDfault_msg);
-      }
+    }
+  } else {
+    redlight_msg.buf[0] = 0x00;
+    attachedCANBus->sendFrame(redlight_msg);
   }
+  attachedCANBus->sendFrame(triggerBSPDfault_msg);
 
   /*if (tsms != 1){
     motecbuzztrg_msg.buf[0] = 1;

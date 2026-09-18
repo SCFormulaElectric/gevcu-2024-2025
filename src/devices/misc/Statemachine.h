@@ -75,6 +75,7 @@ private:
     uint32_t lastredlightTime;
     uint32_t imdFault_latch;
     uint32_t faultCounter1;
+    uint32_t faultCounter2;
     uint32_t testTime01; // to add delays for debugging purposes
     uint32_t imdFaultBlind; // to add delays for debugging purposes
     uint32_t btnPress;
@@ -83,6 +84,7 @@ private:
     uint32_t clearBmsonStartFlag;
     uint32_t LV_SOC; 
     uint32_t redlighttoggleflag;
+    uint32_t redFaultLatch;
     uint16_t current_value;
     uint16_t SOC_value;
 
