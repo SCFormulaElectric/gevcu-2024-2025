@@ -97,6 +97,11 @@ private:
     int16_t motorTemperature;
     CAN_message_t motorTempMsg;
     CAN_message_t RequestDCMsg;
+
+    // read-only readout of the speed limiter (torque cruise control) parameters
+    void requestLimiterParams();
+    uint8_t limiterParamsLogged;   // bit i set once LIMITER_PARAMS[i] has been logged
+    uint32_t lastLimiterRequest;
 };
 
 #endif /* DMOC_H_ */

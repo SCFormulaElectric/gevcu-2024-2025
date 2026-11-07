@@ -8,6 +8,20 @@
 
 class StatemachineDevice;
 
+// Registers that set up the Bamocar's speed limiter in torque mode (NDrive manual 12.1, 13.3).
+// Only read here, never written, so we can see their current values and encoding.
+static const struct { uint8_t reg; const char *name; } LIMITER_PARAMS[] = {
+    {0x34, "N-Lim"},
+    {0xC8, "N-100%"},
+    {0x35, "ramps: low = N R-Acc ms, high = M R-Acc ms"},
+    {0xED, "ramps: low = N R-Dec ms, high = M R-Dec ms"},
+    {0x2C, "speed Kp"},
+    {0x2D, "speed Ti"},
+    {0x3B, "speed TiM"},
+    {0x40, "status (bit 6 = T-Nlim, speed-limited in torque mode)"},
+};
+static const uint8_t NUM_LIMITER_PARAMS = sizeof(LIMITER_PARAMS) / sizeof(LIMITER_PARAMS[0]);
+
 BamocarMotorController::BamocarMotorController() : MotorController() {    
     selectedGear = DRIVE;
     commonName = "Bamocar Inverter";
@@ -94,6 +108,26 @@ void BamocarMotorController::setup() {
     RequestDCMsg.buf[5] = 0x00;
     RequestDCMsg.buf[6] = 0x00;
     RequestDCMsg.buf[7] = 0x00;
+
+    limiterParamsLogged = 0;
+    lastLimiterRequest = 0;
+}
+
+/*
+ * Ask once (3D <reg> 00) for every limiter register that hasn't answered yet.
+ * Called every second until all have replied, in case the Bamocar powers up after us.
+ */
+void BamocarMotorController::requestLimiterParams() {
+    CAN_message_t req;
+    req.id = 0x201;
+    req.len = 3;
+    req.buf[0] = 0x3D;
+    req.buf[2] = 0x00;
+    for (uint8_t i = 0; i < NUM_LIMITER_PARAMS; i++) {
+        if (limiterParamsLogged & (1 << i)) continue;
+        req.buf[1] = LIMITER_PARAMS[i].reg;
+        attachedCANBus->sendFrame(req);
+    }
 }
 
 
@@ -103,6 +137,10 @@ void BamocarMotorController::handleTick() {
     MotorController::handleTick();
 
     attachedCANBus->sendFrame(RequestDCMsg);
+    if (limiterParamsLogged != (1 << NUM_LIMITER_PARAMS) - 1 && millis() - lastLimiterRequest > 1000) {
+        requestLimiterParams();
+        lastLimiterRequest = millis();
+    }
     if (millis() - lastTempSendTime > 3000) {
         uint16_t tempC = (uint16_t)((motorTemperature - 9369) / 55.21f);
         motorTempMsg.id = 0x476;
@@ -236,6 +274,16 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
     motorTemperature = (int16_t)(frame.buf[1] | (frame.buf[2] << 8));
     float motorTempC = (motorTemperature - 9369) / 55.21f;
     //Logger::console("Motor temp: %.1f C", motorTempC);
+    }
+    // Limiter parameter replies: REGID, value LE; DLC 4 = 16-bit, DLC 6 = 32-bit (CAN manual 4.5)
+    for (uint8_t i = 0; i < NUM_LIMITER_PARAMS; i++) {
+        if (frame.buf[0] != LIMITER_PARAMS[i].reg || (limiterParamsLogged & (1 << i))) continue;
+        limiterParamsLogged |= 1 << i;
+        uint32_t value = frame.buf[1] | ((uint32_t)frame.buf[2] << 8);
+        if (frame.len >= 6) value |= ((uint32_t)frame.buf[3] << 16) | ((uint32_t)frame.buf[4] << 24);
+        Logger::console("Bamocar reg 0x%02X %s: DLC %d, value %lu (0x%08lX), low16 %u, high16 %u",
+                        LIMITER_PARAMS[i].reg, LIMITER_PARAMS[i].name, frame.len, (unsigned long)value,
+                        (unsigned long)value, (unsigned)(value & 0xFFFF), (unsigned)(value >> 16));
     }
 
 
