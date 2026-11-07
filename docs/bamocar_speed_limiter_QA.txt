@@ -1,0 +1,292 @@
+Bamocar speed limiter - questions and answers
+Branch: bamocar-speed-limiter (GEVCU firmware)
+Date: 2026-11-06
+
+======================================================================
+Q1. so i just flash then use serial console to read/set
+======================================================================
+
+Yes, that's it. In the serial monitor (where you saw the readout):
+
+1. Read the current values. Type `h` (or `?`) and press Enter. The help
+   menu lists the settings of every enabled device with their current
+   values. Look under "Bamocar Inverter Configuration" for:
+   - RPM: the speed limit (6000 or more = off)
+   - LIMKP and LIMTI: the limiter gains
+
+2. Set a value. Type it as NAME=value, for example:
+
+       RPM=4500
+
+   The console replies "4500 was set as value for parameter RPM" and
+   saves it to the GEVCU's EEPROM. Within about a second the log shows:
+
+       Bamocar speed limit 4500 rpm (N-Lim 24575 of 32767), Kp 5, Ti 400 ms
+       Bamocar N-Lim readback OK (24575)
+
+Notes:
+- Setting names are case sensitive. Use RPM, LIMKP and LIMTI in capitals.
+- Check RPM with `h` right after flashing, before driving. Whatever value
+  is stored applies straight away.
+- The settings survive a reboot (they're in the GEVCU's EEPROM), so you
+  only set them once.
+- RPM also exists on the old DMOC driver. The console changes the first
+  enabled device that has that setting. If the DMOC driver were enabled
+  too, RPM= might change its value instead. Your car only runs the
+  Bamocar, and the `h` listing shows which device it's under.
+
+======================================================================
+Q2. im on that brNCH?
+======================================================================
+
+Yes. Your gevcu folder is on bamocar-speed-limiter at 0e0b143 ("Add
+Bamocar speed limiter..."). There are no uncommitted changes, and it
+matches GitHub. Flashing from the IDE now uploads the speed limiter
+version.
+
+The other two branches, in case you need them:
+- bamocar-param-readout: the read-only step 1 version.
+- scfe26-brake-can: your earlier code, before any Bamocar changes.
+
+Switch with `git switch <branch>`, or from the branch picker in VS
+Code's status bar.
+
+======================================================================
+Q3. (pasted the startup log)
+======================================================================
+
+    I(0.495669) MaxTorque: 1000.0 MaxRPM: 6000
+    Bamocar reg 0x35 ramps: ... value 6554600 (0x006403E8), low16 1000, high16 100
+    Bamocar reg 0x3B speed TiM: ... value 60
+    Bamocar reg 0x2C speed Kp: ... value 10
+    Bamocar reg 0x40 status ...: value 41943808 (0x02800300)
+    Bamocar speed limiter off (RPM 6000 >= N-100% 6000)
+    Bamocar N-Lim readback OK (32767)
+
+It's working.
+- At startup the GEVCU read every limiter register (0x35, 0x3B, 0x2C,
+  0x40, and the rest).
+- With MaxRPM: 6000 it worked out that the limiter should be off, wrote
+  N-Lim = 32767, and the readback matched: "Bamocar N-Lim readback OK
+  (32767)".
+- The car drives the same as before.
+
+Something to check: shortly after that, there should also be a "Bamocar
+speed limiter inactive" line, from the first status read. Your paste
+ends 0.3 s after the readback, so it may just be cut off. If it never
+appears, tell me.
+
+Next, on the stand with the wheels off the ground:
+1. Type RPM=3000. You should see:
+       Bamocar speed limit 3000 rpm (N-Lim 16383 of 32767), Kp 5, Ti 400 ms
+       Bamocar N-Lim readback OK (16383)
+2. Go to R2D and give it full throttle. The motor should stop speeding
+   up at around 3000 rpm. The log should show "Bamocar speed limiter
+   ACTIVE (cutting torque)" while it's holding the limit, then
+   "inactive" when you lift off.
+3. Look at the RPM (BmsClearer's "Motor RPM:" line, or 0x474 on the
+   dash):
+   - Goes well past 3000 before settling: raise LIMKP (try 8-10).
+   - Surges or oscillates around 3000: lower it, or raise LIMTI.
+4. Set RPM to the limit you actually want, or back to RPM=6000 to turn
+   it off.
+
+======================================================================
+Q4. i sent RPM=1102 and i got a reply but after i rebooted i saw rpm of
+    6000
+======================================================================
+
+That means the setting is applied but not saved. (I started looking into
+how GEVCU stores settings: it writes them to an external I2C EEPROM,
+straight away, and nothing else uses a setting called RPM. Then Q5 came
+in.)
+
+======================================================================
+Q5. nvm
+    19:02:44.154 -> Bamocar speed limit 1102 rpm (N-Lim 6018 of 32767), Kp 5, Ti 400 ms
+    19:02:44.154 -> Bamocar N-Lim readback OK (6018
+======================================================================
+
+That's the limiter working: 1102 rpm / 6000 x 32767 = 6018, and the
+inverter read back the same value. Your RPM=1102 was saved and survived
+the reboot. The 6000 you saw first was most likely from before the save.
+
+Next, on the stand, check that the motor tops out around 1100 rpm and
+that the log shows "Bamocar speed limiter ACTIVE (cutting torque)" while
+it's holding the limit.
+
+A real bug I found while looking into this. It doesn't affect this
+setting, but it could bite later:
+- The GEVCU saves settings to its EEPROM in 256-byte pages, sent with a
+  single Wire.write of 258 bytes (2 address bytes plus the data), in
+  src/MemCache.cpp line 434.
+- Teensy's Wire library only holds 137 bytes per transmission
+  (BUFFER_LENGTH 136 + 1), and it silently drops the rest.
+- So only the first 135 data bytes of each page ever reach the EEPROM.
+  Any setting that happens to land in the back part of a page looks
+  saved, but goes back to its old value after a reboot.
+- Your RPM value is in a part of the page that does get written. Another
+  setting might not be.
+
+The fix is small: send each page as two 128-byte halves, each with its
+own address. Nothing has been changed for this yet.
+
+======================================================================
+Q6. so does the limit save in gevcu eeprom or bamocar eeprom?
+======================================================================
+
+The limit is saved in the GEVCU's EEPROM. The Bamocar's EEPROM is never
+written.
+
+  Where            | What's stored                              | Survives power-off?
+  -----------------+--------------------------------------------+---------------------------
+  GEVCU EEPROM     | RPM (1102), LIMKP, LIMTI                   | Yes. Set from the serial
+                   |                                            | console
+  Bamocar RAM      | The N-Lim value the GEVCU writes there     | No. Lost when the Bamocar
+                   | each second (6018)                         | powers off
+  Bamocar EEPROM   | Still its original N-Lim of 32767          | Unchanged
+                   | (no limit)                                 |
+
+Each time the car powers up, the GEVCU reads RPM from its own EEPROM and
+writes the matching N-Lim into the Bamocar's RAM. It repeats that every
+second, so the limit comes back even if the Bamocar restarts on its own.
+
+The catch: the limit only works while the GEVCU is running this
+firmware. If someone flashes firmware without the limiter, or the
+Bamocar runs with the GEVCU off (in NDrive on the bench, for example),
+the Bamocar falls back to its EEPROM value: no limit.
+
+If you want the Bamocar to enforce the limit by itself as well, save
+N-Lim to the Bamocar's EEPROM once with NDrive. The GEVCU keeps writing
+its value on top, and changing RPM from the console still works.
+
+======================================================================
+Q7. i see. and the line that has the Tk = 5; Pd = 200ms is the bamocar
+    reply
+======================================================================
+
+No. If you mean the "Bamocar speed limit 1102 rpm (N-Lim 6018 of 32767),
+Kp 5, Ti 400 ms" line, that's the GEVCU logging what it's about to send.
+
+  Log line                              | Who it comes from    | What it tells you
+  --------------------------------------+----------------------+-----------------------------------
+  Bamocar reg 0x.. ... (at startup)     | Bamocar replies      | The inverter's own values before
+                                        |                      | the GEVCU writes anything. That's
+                                        |                      | why it showed Kp 10, Ti 20
+  Bamocar speed limit ... Kp 5, Ti 400  | GEVCU                | What it's writing. Not a
+                                        |                      | confirmation
+  Bamocar N-Lim readback OK (6018)      | Bamocar reply        | Confirms the inverter really holds
+                                        |                      | the new N-Lim
+  Bamocar speed limiter ACTIVE /        | Bamocar reply        | Whether the limiter is cutting
+  inactive                              | (status bit 6)       | torque right now
+
+So only N-Lim is confirmed by the Bamocar. Kp, Ti and the 10 ms ramps
+are written every second but never read back. They're almost certainly
+applied, since the inverter accepts the N-Lim write sent the same way,
+but nothing proves it.
+
+To check them now, use NDrive's Speed page, or reboot the GEVCU: the
+startup readout shows the Bamocar's values. Since the Bamocar keeps the
+RAM values across a GEVCU reboot (as long as the inverter stays
+powered), that readout should show Kp 5, Ti 400 and the 10 ms ramps.
+
+Readback for those could be added too, so every value gets an "OK" or a
+mismatch error like N-Lim does.
+
+======================================================================
+Q8. how often does the bamocar reply show on the console
+======================================================================
+
+The Bamocar replies every second, but the console only prints a line
+when something changes, so in normal running it's quiet.
+
+  Line                                  | How often the Bamocar replies | When it's printed
+  --------------------------------------+-------------------------------+------------------------------
+  Bamocar reg 0x.. (startup readout)    | Once per register at boot     | Once each, at startup
+  Bamocar N-Lim readback OK (6018)      | Every second                  | Once after boot, then again
+                                        |                               | only if the value changes
+                                        |                               | (e.g. after a new RPM)
+  Bamocar N-Lim readback 32767,         | Every second                  | Once each time the readback
+  expected 6018 (error)                 |                               | changes to a wrong value,
+                                        |                               | e.g. if something else
+                                        |                               | overwrote N-Lim
+  Bamocar speed limiter ACTIVE /        | Every second                  | Only when it switches: when
+  inactive                              |                               | the limiter starts or stops
+                                        |                               | cutting torque
+
+On the stand, for example, you'd see:
+1. "inactive" after boot.
+2. "ACTIVE (cutting torque)" once when the motor reaches about 1100 rpm.
+3. "inactive" again when you lift off the throttle.
+
+Because the status is only checked once a second, a limiter hit shorter
+than a second may not show up.
+
+The BAMO RAMP / I_MAX / I_CON_EFF lines you see every second are
+separate: that's the BmsClearer code printing its own Bamocar reads.
+
+======================================================================
+Q9. since i have 1000ms acceleration ramp then is that limiting me
+======================================================================
+
+No, not with this firmware running. Here's why, case by case:
+
+Without the limiter (N-Lim at 100%, how the car drove before): the
+1000 ms speed ramp has no effect. The NDrive manual (13.3) says that in
+pure torque mode "No limiting based on the speed ramps active".
+
+With the limiter on (RPM=1102): the speed ramps do apply, but the GEVCU
+writes N R-Acc and N R-Dec as 10 ms every second, so the 1000 ms value
+isn't in use. It's still stored in the Bamocar's EEPROM, so it comes back
+if the Bamocar runs without this firmware.
+
+Even at 1000 ms it probably wouldn't have held you back. That ramp means
+0 -> 6000 rpm in no less than 1 second, and the car most likely can't
+accelerate that fast anyway. 10 ms just takes it out of the picture
+completely.
+
+The ramp that does affect you is the torque ramp, M R-Acc = 100 ms (the
+high half of the same register; the GEVCU keeps it as it is). In torque
+mode, the Bamocar takes 100 ms to go from 0 to full torque. That's a
+slight softening of throttle response. Lower it in NDrive if you want a
+sharper response, but it also protects the drivetrain from torque
+spikes.
+
+To confirm the 10 ms was applied: reboot only the GEVCU, keeping the
+Bamocar powered. The startup readout should then show
+"0x35 ... low16 10, high16 100". If it still shows "low16 1000", the
+write isn't taking effect.
+
+======================================================================
+Q10. can i lower it over CAN
+======================================================================
+
+Yes. M R-Acc is the high half of register 0x35, the same register the
+GEVCU already writes every second. Right now the GEVCU writes back
+whatever value it read from the inverter at startup (100 ms). Changing
+it means sending a different value in that half.
+
+It can be made a console setting like RPM:
+
+  Setting             | Register         | Effect                                | Range
+  --------------------+------------------+---------------------------------------+-----------
+  MRACC=50            | 0x35 high half   | Torque ramp up: time from 0 to full   | 0-4000 ms
+                      |                  | torque                                |
+  MRDEC=50 (optional) | 0xED high half   | Torque ramp down: how fast torque     | 0-4000 ms
+                      |                  | drops when you lift off               |
+
+As with the others, it would be saved in the GEVCU's EEPROM, written to
+the Bamocar's RAM every second, and logged. The default would stay
+100 ms, so nothing changes until you set it.
+
+Before lowering it, keep in mind:
+- Lower means a sharper throttle response, but harder torque steps.
+  That's more shock on the drivetrain and easier wheelspin when you
+  stamp on the throttle. 0 means full torque instantly.
+- The GEVCU code already rate-limits torque somewhat. It only sends a new
+  torque command when the value changes, every 40 ms. So below about
+  40 ms you won't feel much difference.
+- Per the manual, this ramp only applies to torque commands, which is
+  how the car drives. It doesn't affect the speed limiter.
+
+(Not implemented yet: MRACC / MRDEC.)
