@@ -61,7 +61,13 @@
  */
 class BamocarMotorControllerConfiguration : public MotorControllerConfiguration {
 public:
+    uint16_t limiterKp;   // Bamocar speed controller Kp (0x2C) used by the speed limiter
+    uint16_t limiterTi;   // Bamocar speed controller Ti in ms (0x2D) used by the speed limiter
 };
+
+// Speed ramps (N R-Acc / N R-Dec) written while the limiter is set up. With N-Lim < 100 % these
+// ramps also cap acceleration in torque mode, so keep them short (NDrive manual 13.3).
+#define BAMOCAR_LIMITER_SPEED_RAMP_MS 10
 
 class BamocarMotorController: public MotorController, CanObserver {
 public:
@@ -98,10 +104,19 @@ private:
     CAN_message_t motorTempMsg;
     CAN_message_t RequestDCMsg;
 
-    // read-only readout of the speed limiter (torque cruise control) parameters
+    // speed limiter (torque cruise control): read the registers once, then keep writing the setpoints
     void requestLimiterParams();
+    void applySpeedLimiter();
+    void writeReg16(uint8_t reg, uint16_t value);
+    void writeReg32(uint8_t reg, uint32_t value);
     uint8_t limiterParamsLogged;   // bit i set once LIMITER_PARAMS[i] has been logged
     uint32_t lastLimiterRequest;
+    uint16_t limiterNMax;          // N-100% (0xC8) in rpm, as read from the inverter
+    uint16_t limiterTorqueAccRamp; // M R-Acc (high half of 0x35), kept when writing the speed ramp
+    uint16_t limiterTorqueDecRamp; // M R-Dec (high half of 0xED), kept when writing the speed ramp
+    uint32_t appliedNLim;          // N-Lim value last written (32767 = 100 % = limiter off)
+    uint32_t lastNLimReadback;
+    uint8_t lastLimiterActive;     // T-Nlim (0x40 bit 6) last seen; 0xFF = not seen yet
 };
 
 #endif /* DMOC_H_ */

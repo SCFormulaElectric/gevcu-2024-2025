@@ -41,6 +41,14 @@ void BamocarMotorController::setup() {
     loadConfiguration();
     MotorController::setup(); // run the parent class version of this function
 
+    // The speed limit itself is the motor controller's RPM setting (serial console: RPM=4500).
+    BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
+    ConfigEntry entry;
+    entry = {"LIMKP", "Bamocar speed limiter Kp (speed controller gain, 0-200)", &config->limiterKp, CFG_ENTRY_VAR_TYPE::UINT16, 0, 200, 0, nullptr};
+    cfgEntries.push_back(entry);
+    entry = {"LIMTI", "Bamocar speed limiter Ti (speed controller integral time, ms, 0-10000)", &config->limiterTi, CFG_ENTRY_VAR_TYPE::UINT16, 0, 10000, 0, nullptr};
+    cfgEntries.push_back(entry);
+
     running = true;
     setPowerMode(modeTorque);
     setSelectedGear(REVERSE);
@@ -111,6 +119,72 @@ void BamocarMotorController::setup() {
 
     limiterParamsLogged = 0;
     lastLimiterRequest = 0;
+    limiterNMax = 0;
+    limiterTorqueAccRamp = 0;
+    limiterTorqueDecRamp = 0;
+    appliedNLim = 0xFFFFFFFF;
+    lastNLimReadback = 0xFFFFFFFF;
+    lastLimiterActive = 0xFF;
+}
+
+void BamocarMotorController::writeReg16(uint8_t reg, uint16_t value) {
+    CAN_message_t msg;
+    msg.id = 0x201;
+    msg.len = 3;
+    msg.buf[0] = reg;
+    msg.buf[1] = value & 0xFF;
+    msg.buf[2] = value >> 8;
+    attachedCANBus->sendFrame(msg);
+}
+
+void BamocarMotorController::writeReg32(uint8_t reg, uint32_t value) {
+    CAN_message_t msg;
+    msg.id = 0x201;
+    msg.len = 5;
+    msg.buf[0] = reg;
+    msg.buf[1] = value & 0xFF;
+    msg.buf[2] = (value >> 8) & 0xFF;
+    msg.buf[3] = (value >> 16) & 0xFF;
+    msg.buf[4] = value >> 24;
+    attachedCANBus->sendFrame(msg);
+}
+
+/*
+ * Write the speed limiter setpoints to the Bamocar's RAM (never its EEPROM), then read back
+ * N-Lim and the status word. Called once a second so a power-cycled inverter gets them again
+ * and a changed RPM / LIMKP / LIMTI setting takes effect within a second.
+ * N-Lim: 32767 = 100 % of N-100% (0xC8). RPM at or above N-100% turns the limiter off.
+ */
+void BamocarMotorController::applySpeedLimiter() {
+    BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
+    if (limiterNMax == 0) return; // N-100% unknown: can't scale N-Lim
+
+    uint32_t nLim = 32767;
+    if (config->speedMax < limiterNMax) nLim = (uint32_t)config->speedMax * 32767 / limiterNMax;
+    if (nLim != appliedNLim) {
+        if (nLim == 32767)
+            Logger::console("Bamocar speed limiter off (RPM %u >= N-100%% %u)", config->speedMax, limiterNMax);
+        else
+            Logger::console("Bamocar speed limit %u rpm (N-Lim %lu of 32767), Kp %u, Ti %u ms",
+                            config->speedMax, (unsigned long)nLim, config->limiterKp, config->limiterTi);
+        appliedNLim = nLim;
+    }
+
+    writeReg16(0x34, nLim);
+    writeReg32(0x35, ((uint32_t)limiterTorqueAccRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
+    writeReg32(0xED, ((uint32_t)limiterTorqueDecRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
+    writeReg16(0x2C, config->limiterKp);
+    writeReg16(0x2D, config->limiterTi);
+
+    CAN_message_t req;
+    req.id = 0x201;
+    req.len = 3;
+    req.buf[0] = 0x3D;
+    req.buf[2] = 0x00;
+    req.buf[1] = 0x34;
+    attachedCANBus->sendFrame(req);
+    req.buf[1] = 0x40;
+    attachedCANBus->sendFrame(req);
 }
 
 /*
@@ -137,9 +211,11 @@ void BamocarMotorController::handleTick() {
     MotorController::handleTick();
 
     attachedCANBus->sendFrame(RequestDCMsg);
-    if (limiterParamsLogged != (1 << NUM_LIMITER_PARAMS) - 1 && millis() - lastLimiterRequest > 1000) {
-        requestLimiterParams();
+    if (millis() - lastLimiterRequest > 1000) {
         lastLimiterRequest = millis();
+        // read every limiter register once first, so the logs show the inverter's own values
+        if (limiterParamsLogged != (1 << NUM_LIMITER_PARAMS) - 1) requestLimiterParams();
+        else applySpeedLimiter();
     }
     if (millis() - lastTempSendTime > 3000) {
         uint16_t tempC = (uint16_t)((motorTemperature - 9369) / 55.21f);
@@ -284,6 +360,30 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
         Logger::console("Bamocar reg 0x%02X %s: DLC %d, value %lu (0x%08lX), low16 %u, high16 %u",
                         LIMITER_PARAMS[i].reg, LIMITER_PARAMS[i].name, frame.len, (unsigned long)value,
                         (unsigned long)value, (unsigned)(value & 0xFFFF), (unsigned)(value >> 16));
+        if (frame.buf[0] == 0xC8) limiterNMax = value & 0xFFFF;
+        if (frame.buf[0] == 0x35) limiterTorqueAccRamp = value >> 16;
+        if (frame.buf[0] == 0xED) limiterTorqueDecRamp = value >> 16;
+        return;
+    }
+    // after the first readout: readbacks requested by applySpeedLimiter()
+    if (appliedNLim != 0xFFFFFFFF) {
+        if (frame.buf[0] == 0x34) {
+            uint32_t readback = frame.buf[1] | ((uint32_t)frame.buf[2] << 8);
+            if (readback != lastNLimReadback) {
+                if (readback != appliedNLim)
+                    Logger::error("Bamocar N-Lim readback %lu, expected %lu", (unsigned long)readback, (unsigned long)appliedNLim);
+                else
+                    Logger::console("Bamocar N-Lim readback OK (%lu)", (unsigned long)readback);
+                lastNLimReadback = readback;
+            }
+        }
+        if (frame.buf[0] == 0x40) {
+            uint8_t active = (frame.buf[1] & 0x40) ? 1 : 0; // T-Nlim: speed-limited while in torque control
+            if (active != lastLimiterActive) {
+                Logger::console("Bamocar speed limiter %s", active ? "ACTIVE (cutting torque)" : "inactive");
+                lastLimiterActive = active;
+            }
+        }
     }
 
 
@@ -325,10 +425,16 @@ void BamocarMotorController::loadConfiguration() {
     }
 
     MotorController::loadConfiguration(); // call parent
+    // defaults are Unitek's recommendation for torque cruise control (NDrive manual 13.3)
+    prefsHandler->read("LimiterKp", &config->limiterKp, 5);
+    prefsHandler->read("LimiterTi", &config->limiterTi, 400);
 }
 
 void BamocarMotorController::saveConfiguration() {
-    MotorController::saveConfiguration();
+    BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
+    prefsHandler->write("LimiterKp", config->limiterKp);
+    prefsHandler->write("LimiterTi", config->limiterTi);
+    MotorController::saveConfiguration(); // writes the checksum, so it goes last
 }
 
 BamocarMotorController bamocarMC;
