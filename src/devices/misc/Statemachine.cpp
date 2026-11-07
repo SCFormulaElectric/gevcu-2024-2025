@@ -132,6 +132,14 @@ void StatemachineDevice::setup() {
     SOC_msg.id = 0x798;
     SOC_msg.len = 2;
 
+    brake1_msg.id = 0x364;
+    brake1_msg.len = 2;
+    brake2_msg.id = 0x365;
+    brake2_msg.len = 2;
+    brakeTxTick = 0;
+    busv_msg.id = 0x366;
+    busv_msg.len = 2;
+
 
     
 
@@ -177,6 +185,10 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         CUR_msg.buf[1] = frame.buf[1];
         attachedCANBus->sendFrame(CUR_msg);
         Logger::console("Current val: %u", current_value);
+        //busv = (frame.buf[2] << 8) | frame.buf[3];
+        busv_msg.buf[0] = frame.buf[2];
+        busv_msg.buf[1] = frame.buf[3];
+        attachedCANBus->sendFrame(busv_msg);
       }
 
       if (frame.id== 0x302){
@@ -222,6 +234,19 @@ void StatemachineDevice::handleTick() {
   //Logger::console("brake 1 val: %u", brake1);
   //Logger::console("brake 2 val: %u", brake2);
   //Logger::console("soc val: %u", LV_SOC);
+
+  // broadcast raw brake ADC counts (0-4095) at 20 Hz: tick is 10 ms, so every 5th tick
+  if (++brakeTxTick >= 5) {
+    brakeTxTick = 0;
+    uint16_t b1 = (uint16_t) constrain(brake1, 0, 4095);
+    uint16_t b2 = (uint16_t) constrain(brake2, 0, 4095);
+    brake1_msg.buf[0] = b1 >> 8;   // high byte first
+    brake1_msg.buf[1] = b1 & 0xFF;
+    brake2_msg.buf[0] = b2 >> 8;
+    brake2_msg.buf[1] = b2 & 0xFF;
+    attachedCANBus->sendFrame(brake1_msg);
+    attachedCANBus->sendFrame(brake2_msg);
+  }
 
   if (millis() - imdFaultBlind > 30000){
       fault_imd       = systemIO.getDigitalIn(0); //um for us its inverted.
@@ -269,13 +294,13 @@ void StatemachineDevice::handleTick() {
   if (redFaultLatch) {
     triggerBSPDfault_msg.buf[0] = 0x00;
 
-    if (millis() - lastredlightTime > 125) {
+    if (millis() - lastredlightTime > 166) {
       if (redlighttoggleflag == 1) {
-        redlight_msg.buf[0] ^= 0x01;
+        redlight_msg.buf[0] = 0x01;
         redlighttoggleflag = 0;
       } else {
         redlighttoggleflag = 1;
-        redlight_msg.buf[0] ^= 0x00;
+        redlight_msg.buf[0] = 0x00;
       }
       attachedCANBus->sendFrame(redlight_msg);
       lastredlightTime = millis();

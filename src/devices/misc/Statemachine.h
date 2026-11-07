@@ -46,6 +46,7 @@ private:
     int8_t dash_send_flag;    // controls when to send message gevcu to dash 
     int8_t dash_val_msg;      // set when we recieve the check from car
     int8_t button_val_msg; // can id 0x777 sent on button press
+    uint16_t busv;
     CAN_message_t buzz_msg;
     CAN_message_t clear_bms_msg;
     CAN_message_t redlight_msg;
@@ -56,6 +57,10 @@ private:
     CAN_message_t R2D_msg;
     CAN_message_t SOC_msg;
     CAN_message_t CUR_msg;
+    CAN_message_t brake1_msg;   // raw ADC counts, id 0x364
+    CAN_message_t brake2_msg;   // raw ADC counts, id 0x365
+    CAN_message_t busv_msg;
+    uint8_t brakeTxTick;        // tick counter for 20 Hz brake ADC broadcast
       // the constructed msg to activate buzzer_msg 
                               /* 
                                 NOTE: there needs to be a check in the dash 
