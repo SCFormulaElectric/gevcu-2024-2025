@@ -22,6 +22,31 @@ static const struct { uint8_t reg; const char *name; } LIMITER_PARAMS[] = {
 };
 static const uint8_t NUM_LIMITER_PARAMS = sizeof(LIMITER_PARAMS) / sizeof(LIMITER_PARAMS[0]);
 
+// Registers read back every second to confirm the settings in the inverter (reportSettings()).
+// The first five are written by applySpeedLimiter(); the current limits are only read.
+enum { CF_NLIM, CF_RAMP_ACC, CF_RAMP_DEC, CF_KP, CF_TI, CF_IRAMP, CF_IMAX, CF_IMAXPK, CF_ICON };
+static const uint8_t CONFIRM_REGS[BAMOCAR_CONFIRM_REG_COUNT] = {
+    0x34, // N-Lim
+    0x35, // ramps: high = M R-Acc, low = N R-Acc (ms)
+    0xED, // ramps: high = M R-Dec, low = N R-Dec (ms)
+    0x2C, // speed Kp
+    0x2D, // speed Ti (ms)
+    0x25, // current ramp (us)
+    0x4D, // I max eff, motor maximum current (0.1 A rms)
+    0xC4, // I max pk, inverter peak current
+    0xC5, // I con eff, inverter continuous current
+};
+
+// Append "label value OK |", "label value MISMATCH (sent x) |" or "label no reply |"
+static int appendCheck(char *buf, int pos, int size, const char *label, bool seen, uint32_t got, uint32_t want, const char *unit) {
+    if (pos >= size) return pos;
+    if (!seen)
+        return pos + snprintf(buf + pos, size - pos, " %s no reply |", label);
+    if (got == want)
+        return pos + snprintf(buf + pos, size - pos, " %s %lu%s OK |", label, (unsigned long)got, unit);
+    return pos + snprintf(buf + pos, size - pos, " %s %lu%s MISMATCH (sent %lu) |", label, (unsigned long)got, unit, (unsigned long)want);
+}
+
 BamocarMotorController::BamocarMotorController() : MotorController() {    
     selectedGear = DRIVE;
     commonName = "Bamocar Inverter";
@@ -47,6 +72,11 @@ void BamocarMotorController::setup() {
     entry = {"LIMKP", "Bamocar speed limiter Kp (speed controller gain, 0-200)", &config->limiterKp, CFG_ENTRY_VAR_TYPE::UINT16, 0, 200, 0, nullptr};
     cfgEntries.push_back(entry);
     entry = {"LIMTI", "Bamocar speed limiter Ti (speed controller integral time, ms, 0-10000)", &config->limiterTi, CFG_ENTRY_VAR_TYPE::UINT16, 0, 10000, 0, nullptr};
+    cfgEntries.push_back(entry);
+    // Torque ramps: time from 0 to full torque (NDrive manual 8.14). Lower = snappier throttle.
+    entry = {"MRACC", "Bamocar torque ramp up M R-Acc (ms 0 to full torque, 0-4000; 65535 = keep inverter value)", &config->torqueAccRamp, CFG_ENTRY_VAR_TYPE::UINT16, 0, 65535, 0, nullptr};
+    cfgEntries.push_back(entry);
+    entry = {"MRDEC", "Bamocar torque ramp down M R-Dec (ms full torque to 0, 0-4000; 65535 = keep inverter value)", &config->torqueDecRamp, CFG_ENTRY_VAR_TYPE::UINT16, 0, 65535, 0, nullptr};
     cfgEntries.push_back(entry);
 
     running = true;
@@ -125,6 +155,12 @@ void BamocarMotorController::setup() {
     appliedNLim = 0xFFFFFFFF;
     lastNLimReadback = 0xFFFFFFFF;
     lastLimiterActive = 0xFF;
+    appliedTorqueRamps = 0xFFFFFFFF;
+    writtenKp = 0;
+    writtenTi = 0;
+    confirmSeen = 0;
+    memset(confirmValue, 0, sizeof(confirmValue));
+    memset(lastSettingsReport, 0, sizeof(lastSettingsReport));
 }
 
 void BamocarMotorController::writeReg16(uint8_t reg, uint16_t value) {
@@ -150,39 +186,99 @@ void BamocarMotorController::writeReg32(uint8_t reg, uint32_t value) {
 }
 
 /*
+ * Print what the inverter actually holds (read back last second) next to what the GEVCU wrote.
+ * Only prints when something changed, so a changed setting gets one confirmation line.
+ */
+void BamocarMotorController::reportSettings() {
+    if (appliedNLim == 0xFFFFFFFF) return; // nothing written yet
+
+    char buf[sizeof(lastSettingsReport)];
+    int size = sizeof(buf);
+    memset(buf, 0, size); // whole buffer is compared with the last report
+    int pos = snprintf(buf, size, "BAMOCAR SETTINGS (read back):");
+    uint32_t ramp35 = confirmValue[CF_RAMP_ACC], rampED = confirmValue[CF_RAMP_DEC];
+    bool seen35 = confirmSeen & (1 << CF_RAMP_ACC), seenED = confirmSeen & (1 << CF_RAMP_DEC);
+    pos = appendCheck(buf, pos, size, "N-Lim(32767=off)", confirmSeen & (1 << CF_NLIM), confirmValue[CF_NLIM] & 0xFFFF, appliedNLim, "");
+    pos = appendCheck(buf, pos, size, "M R-Acc", seen35, ramp35 >> 16, appliedTorqueRamps >> 16, " ms");
+    pos = appendCheck(buf, pos, size, "M R-Dec", seenED, rampED >> 16, appliedTorqueRamps & 0xFFFF, " ms");
+    pos = appendCheck(buf, pos, size, "N R-Acc", seen35, ramp35 & 0xFFFF, BAMOCAR_LIMITER_SPEED_RAMP_MS, " ms");
+    pos = appendCheck(buf, pos, size, "N R-Dec", seenED, rampED & 0xFFFF, BAMOCAR_LIMITER_SPEED_RAMP_MS, " ms");
+    pos = appendCheck(buf, pos, size, "speed Kp", confirmSeen & (1 << CF_KP), confirmValue[CF_KP] & 0xFFFF, writtenKp, "");
+    pos = appendCheck(buf, pos, size, "speed Ti", confirmSeen & (1 << CF_TI), confirmValue[CF_TI] & 0xFFFF, writtenTi, " ms");
+    if (pos > size - 2) pos = size - 2; // first line truncated
+    buf[pos] = '\0';
+    int secondLine = pos + 1;           // second line starts after the first one's terminator
+    pos = secondLine;
+    if (pos < size) pos += snprintf(buf + pos, size - pos, "BAMOCAR CURRENT LIMITS (read only):");
+    if (pos < size) {
+        if (confirmSeen & (1 << CF_IRAMP)) pos += snprintf(buf + pos, size - pos, " current ramp %lu us |", (unsigned long)(confirmValue[CF_IRAMP] & 0xFFFF));
+        else pos += snprintf(buf + pos, size - pos, " current ramp no reply |");
+    }
+    if (pos < size) {
+        if (confirmSeen & (1 << CF_IMAX)) {
+            uint16_t v = confirmValue[CF_IMAX] & 0xFFFF;
+            pos += snprintf(buf + pos, size - pos, " I max eff (motor) %u = %u.%u A rms |", v, v / 10, v % 10);
+        } else pos += snprintf(buf + pos, size - pos, " I max eff (motor) no reply |");
+    }
+    if (pos < size) {
+        if (confirmSeen & (1 << CF_IMAXPK)) pos += snprintf(buf + pos, size - pos, " I max pk %lu (raw) |", (unsigned long)(confirmValue[CF_IMAXPK] & 0xFFFF));
+        else pos += snprintf(buf + pos, size - pos, " I max pk no reply |");
+    }
+    if (pos < size) {
+        if (confirmSeen & (1 << CF_ICON)) pos += snprintf(buf + pos, size - pos, " I con eff %lu (raw)", (unsigned long)(confirmValue[CF_ICON] & 0xFFFF));
+        else pos += snprintf(buf + pos, size - pos, " I con eff no reply");
+    }
+
+    buf[size - 1] = '\0';
+    if (memcmp(buf, lastSettingsReport, size) == 0) return;
+    memcpy(lastSettingsReport, buf, size);
+    // Serial directly: Logger::console formats into a 200 byte buffer and these lines can be longer
+    Serial.println(buf);
+    Serial.println(buf + secondLine);
+}
+
+/*
  * Write the speed limiter setpoints to the Bamocar's RAM (never its EEPROM), then read back
  * N-Lim and the status word. Called once a second so a power-cycled inverter gets them again
- * and a changed RPM / LIMKP / LIMTI setting takes effect within a second.
+ * and a changed RPM / LIMKP / LIMTI / MRACC / MRDEC setting takes effect within a second.
  * N-Lim: 32767 = 100 % of N-100% (0xC8). RPM at or above N-100% turns the limiter off.
+ * The torque ramps share registers 0x35 / 0xED with the speed ramps (high / low half).
  */
 void BamocarMotorController::applySpeedLimiter() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     if (limiterNMax == 0) return; // N-100% unknown: can't scale N-Lim
 
+    reportSettings(); // compare last second's readbacks with what was written then
+
     uint32_t nLim = 32767;
     if (config->speedMax < limiterNMax) nLim = (uint32_t)config->speedMax * 32767 / limiterNMax;
-    if (nLim != appliedNLim) {
-        if (nLim == 32767)
-            Logger::console("Bamocar speed limiter off (RPM %u >= N-100%% %u)", config->speedMax, limiterNMax);
-        else
-            Logger::console("Bamocar speed limit %u rpm (N-Lim %lu of 32767), Kp %u, Ti %u ms",
-                            config->speedMax, (unsigned long)nLim, config->limiterKp, config->limiterTi);
-        appliedNLim = nLim;
-    }
+    appliedNLim = nLim;
+
+    uint16_t accRamp = limiterTorqueAccRamp;
+    uint16_t decRamp = limiterTorqueDecRamp;
+    if (config->torqueAccRamp <= 4000) accRamp = config->torqueAccRamp;
+    if (config->torqueDecRamp <= 4000) decRamp = config->torqueDecRamp;
+    appliedTorqueRamps = ((uint32_t)accRamp << 16) | decRamp;
+    writtenKp = config->limiterKp;
+    writtenTi = config->limiterTi;
 
     writeReg16(0x34, nLim);
-    writeReg32(0x35, ((uint32_t)limiterTorqueAccRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
-    writeReg32(0xED, ((uint32_t)limiterTorqueDecRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
-    writeReg16(0x2C, config->limiterKp);
-    writeReg16(0x2D, config->limiterTi);
+    writeReg32(0x35, ((uint32_t)accRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
+    writeReg32(0xED, ((uint32_t)decRamp << 16) | BAMOCAR_LIMITER_SPEED_RAMP_MS);
+    writeReg16(0x2C, writtenKp);
+    writeReg16(0x2D, writtenTi);
 
     CAN_message_t req;
     req.id = 0x201;
     req.len = 3;
     req.buf[0] = 0x3D;
     req.buf[2] = 0x00;
-    req.buf[1] = 0x34;
-    attachedCANBus->sendFrame(req);
+    // read everything back so reportSettings() can confirm it next second
+    confirmSeen = 0;
+    for (uint8_t i = 0; i < BAMOCAR_CONFIRM_REG_COUNT; i++) {
+        req.buf[1] = CONFIRM_REGS[i];
+        attachedCANBus->sendFrame(req);
+    }
     req.buf[1] = 0x40;
     attachedCANBus->sendFrame(req);
 }
@@ -210,7 +306,7 @@ void BamocarMotorController::handleTick() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     MotorController::handleTick();
 
-    attachedCANBus->sendFrame(RequestDCMsg);
+    //attachedCANBus->sendFrame(RequestDCMsg); // DC bus voltage not needed from the Bamocar (bytes were also swapped)
     if (millis() - lastLimiterRequest > 1000) {
         lastLimiterRequest = millis();
         // read every limiter register once first, so the logs show the inverter's own values
@@ -320,7 +416,7 @@ void BamocarMotorController::handleTick() {
                     var.buf[2] = (uint8_t) ((signedTorque >> 8) & 0xFF); 
                     attachedCANBus->sendFrame(var);
                     last_sent_value = mappedMotorTorque;
-                    Logger::console("TORQUE SENT: mapped=%d raw = [0x90, 0x%02X, 0x%02x]", mappedMotorTorque, secondhalf, firsthalf);
+                    //Logger::console("TORQUE SENT: mapped=%d raw = [0x90, 0x%02X, 0x%02x]", mappedMotorTorque, secondhalf, firsthalf);
                 }
             }
         }
@@ -357,9 +453,10 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
         limiterParamsLogged |= 1 << i;
         uint32_t value = frame.buf[1] | ((uint32_t)frame.buf[2] << 8);
         if (frame.len >= 6) value |= ((uint32_t)frame.buf[3] << 16) | ((uint32_t)frame.buf[4] << 24);
-        Logger::console("Bamocar reg 0x%02X %s: DLC %d, value %lu (0x%08lX), low16 %u, high16 %u",
-                        LIMITER_PARAMS[i].reg, LIMITER_PARAMS[i].name, frame.len, (unsigned long)value,
-                        (unsigned long)value, (unsigned)(value & 0xFFFF), (unsigned)(value >> 16));
+        // replaced by the BAMOCAR SETTINGS report
+        //Logger::console("Bamocar reg 0x%02X %s: DLC %d, value %lu (0x%08lX), low16 %u, high16 %u",
+        //                LIMITER_PARAMS[i].reg, LIMITER_PARAMS[i].name, frame.len, (unsigned long)value,
+        //                (unsigned long)value, (unsigned)(value & 0xFFFF), (unsigned)(value >> 16));
         if (frame.buf[0] == 0xC8) limiterNMax = value & 0xFFFF;
         if (frame.buf[0] == 0x35) limiterTorqueAccRamp = value >> 16;
         if (frame.buf[0] == 0xED) limiterTorqueDecRamp = value >> 16;
@@ -367,15 +464,12 @@ void BamocarMotorController::handleCanFrame(const CAN_message_t &frame) {
     }
     // after the first readout: readbacks requested by applySpeedLimiter()
     if (appliedNLim != 0xFFFFFFFF) {
-        if (frame.buf[0] == 0x34) {
-            uint32_t readback = frame.buf[1] | ((uint32_t)frame.buf[2] << 8);
-            if (readback != lastNLimReadback) {
-                if (readback != appliedNLim)
-                    Logger::error("Bamocar N-Lim readback %lu, expected %lu", (unsigned long)readback, (unsigned long)appliedNLim);
-                else
-                    Logger::console("Bamocar N-Lim readback OK (%lu)", (unsigned long)readback);
-                lastNLimReadback = readback;
-            }
+        for (uint8_t i = 0; i < BAMOCAR_CONFIRM_REG_COUNT; i++) {
+            if (frame.buf[0] != CONFIRM_REGS[i]) continue;
+            uint32_t value = frame.buf[1] | ((uint32_t)frame.buf[2] << 8);
+            if (frame.len >= 6) value |= ((uint32_t)frame.buf[3] << 16) | ((uint32_t)frame.buf[4] << 24);
+            confirmValue[i] = value;
+            confirmSeen |= 1 << i;
         }
         if (frame.buf[0] == 0x40) {
             uint8_t active = (frame.buf[1] & 0x40) ? 1 : 0; // T-Nlim: speed-limited while in torque control
@@ -428,12 +522,16 @@ void BamocarMotorController::loadConfiguration() {
     // defaults are Unitek's recommendation for torque cruise control (NDrive manual 13.3)
     prefsHandler->read("LimiterKp", &config->limiterKp, 5);
     prefsHandler->read("LimiterTi", &config->limiterTi, 400);
+    prefsHandler->read("TorqueAccRamp", &config->torqueAccRamp, BAMOCAR_KEEP_INVERTER_RAMP);
+    prefsHandler->read("TorqueDecRamp", &config->torqueDecRamp, BAMOCAR_KEEP_INVERTER_RAMP);
 }
 
 void BamocarMotorController::saveConfiguration() {
     BamocarMotorControllerConfiguration *config = (BamocarMotorControllerConfiguration *)getConfiguration();
     prefsHandler->write("LimiterKp", config->limiterKp);
     prefsHandler->write("LimiterTi", config->limiterTi);
+    prefsHandler->write("TorqueAccRamp", config->torqueAccRamp);
+    prefsHandler->write("TorqueDecRamp", config->torqueDecRamp);
     MotorController::saveConfiguration(); // writes the checksum, so it goes last
 }
 

@@ -141,10 +141,10 @@ void BmsClearer::handleTick() {
     rpmMsg.buf[1] = rpmOut & 0xFF;
     attachedCANBus->sendFrame(rpmMsg);
     // EDIT END
-    Logger::console("BMS Fault #%d active | CAN timeouts: %s %s | Motor RPM: %ld", faultNum,
-        timeout18EEFF80 ? "18EEFF80!" : "18EEFF80-ok",
-        timeout1839F380 ? "1839F380!" : "1839F380-ok",
-        currentRpm);
+    //Logger::console("BMS Fault #%d active | CAN timeouts: %s %s | Motor RPM: %ld", faultNum,
+    //    timeout18EEFF80 ? "18EEFF80!" : "18EEFF80-ok",
+    //    timeout1839F380 ? "1839F380!" : "1839F380-ok",
+    //    currentRpm);
 
     // EDIT START - re-request Nmax if not yet received
     if (!nmaxReceived) {
@@ -198,7 +198,7 @@ void BmsClearer::handleCanFrame(const CAN_message_t &frame) {
         bms_fault_register = ((uint32_t)frame.buf[0] << 24) | ((uint32_t)frame.buf[1] << 16)
                            | ((uint32_t)frame.buf[2] << 8)  |  (uint32_t)frame.buf[3];
         if (bms_fault_register != 0x00000000) {
-            Logger::console("BmsClearer: faulted");
+            //Logger::console("BmsClearer: faulted");
               //  //attachedCANBus->sendFrame(clear_bms_msg);
         }
 
@@ -230,7 +230,7 @@ void BmsClearer::handleCanFrame(const CAN_message_t &frame) {
         int pos = 0;
         for (int i = 0; i < frame.len && i < 8; i++)
             pos += snprintf(buf + pos, sizeof(buf) - pos, "<%02X> ", frame.buf[i]);
-        Logger::console("0x1839F386 frame[%d]: %s", frameIdx, buf);
+        //Logger::console("0x1839F386 frame[%d]: %s", frameIdx, buf);
     }
     // EDIT START - Bamocar RPM reading + diagnostics
     if (frame.id == 0x181 && frame.len >= 3) {
@@ -248,27 +248,27 @@ void BmsClearer::handleCanFrame(const CAN_message_t &frame) {
                 break;
             case 0x20:
                 bamo_iist = val;
-                Logger::console("BAMO I_IST(actual current): %d", bamo_iist);
+                //Logger::console("BAMO I_IST(actual current): %d", bamo_iist);
                 break;
             case 0xA0:
                 bamo_status = (uint16_t)val;
-                Logger::console("BAMO STATUS: 0x%04X", bamo_status);
+                //Logger::console("BAMO STATUS: 0x%04X", bamo_status);
                 break;
             case 0x25:
                 bamo_ramp = val;
-                Logger::info("BAMO RAMP: %d", bamo_ramp);
+                //Logger::info("BAMO RAMP: %d", bamo_ramp);
                 break;
             case 0x4D:
                 bamo_imax = val;
-                Logger::info("BAMO I_MAX: %d", bamo_imax);
+                //Logger::info("BAMO I_MAX: %d", bamo_imax);
                 break;
             case 0xC4:
                 bamo_imaxpk = val;
-                Logger::info("BAMO I_MAX_PK: %d", bamo_imaxpk);
+                //Logger::info("BAMO I_MAX_PK: %d", bamo_imaxpk);
                 break;
             case 0xC5:
                 bamo_icon = val;
-                Logger::info("BAMO I_CON_EFF: %d", bamo_icon);
+                //Logger::info("BAMO I_CON_EFF: %d", bamo_icon);
                 if (!bamo_staticReceived && bamo_ramp != 0 && bamo_imax != 0 && bamo_imaxpk != 0)
                     bamo_staticReceived = true;
                 break;

@@ -14,7 +14,7 @@
 #include "../misc/Statemachine.h"
 
 #define BAMOCARINVERTER 0x1010
-#define CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR     40000
+#define CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR     10000 // 10 ms torque command rate; keep equal to CFG_TICK_INTERVAL_POT_THROTTLE
 
 #define N_NOM 0x59
 #define F_NOM 0x05
@@ -63,11 +63,19 @@ class BamocarMotorControllerConfiguration : public MotorControllerConfiguration 
 public:
     uint16_t limiterKp;   // Bamocar speed controller Kp (0x2C) used by the speed limiter
     uint16_t limiterTi;   // Bamocar speed controller Ti in ms (0x2D) used by the speed limiter
+    uint16_t torqueAccRamp; // M R-Acc in ms (high half of 0x35); BAMOCAR_KEEP_INVERTER_RAMP = keep the inverter's value
+    uint16_t torqueDecRamp; // M R-Dec in ms (high half of 0xED); BAMOCAR_KEEP_INVERTER_RAMP = keep the inverter's value
 };
+
+// Torque ramp setting value meaning "don't override, keep what the inverter has"
+#define BAMOCAR_KEEP_INVERTER_RAMP 0xFFFF
 
 // Speed ramps (N R-Acc / N R-Dec) written while the limiter is set up. With N-Lim < 100 % these
 // ramps also cap acceleration in torque mode, so keep them short (NDrive manual 13.3).
 #define BAMOCAR_LIMITER_SPEED_RAMP_MS 10
+
+// Number of registers read back to confirm the inverter's settings (CONFIRM_REGS in the .cpp)
+#define BAMOCAR_CONFIRM_REG_COUNT 9
 
 class BamocarMotorController: public MotorController, CanObserver {
 public:
@@ -117,6 +125,15 @@ private:
     uint32_t appliedNLim;          // N-Lim value last written (32767 = 100 % = limiter off)
     uint32_t lastNLimReadback;
     uint8_t lastLimiterActive;     // T-Nlim (0x40 bit 6) last seen; 0xFF = not seen yet
+    uint32_t appliedTorqueRamps;   // (M R-Acc << 16) | M R-Dec last written; 0xFFFFFFFF = none yet
+    uint16_t writtenKp;            // speed Kp (0x2C) last written
+    uint16_t writtenTi;            // speed Ti (0x2D) last written
+
+    // settings confirmation: registers read back every second, printed when they change
+    void reportSettings();
+    uint32_t confirmValue[BAMOCAR_CONFIRM_REG_COUNT];
+    uint16_t confirmSeen;          // bit i set once CONFIRM_REGS[i] replied since the last request
+    char lastSettingsReport[512];  // last report printed (two strings back to back)
 };
 
 #endif /* DMOC_H_ */

@@ -172,7 +172,7 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
     */
    
         if(frame.id == 0x777){ 
-          Logger::console("0x777 val: %u", frame.buf[0]);
+          //Logger::console("0x777 val: %u", frame.buf[0]);
         button_val_msg = 1; 
         attachedCANBus->sendFrame(clear_bms_msg);
     }
@@ -184,7 +184,7 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         CUR_msg.buf[0] = frame.buf[0];
         CUR_msg.buf[1] = frame.buf[1];
         attachedCANBus->sendFrame(CUR_msg);
-        Logger::console("Current val: %u", current_value);
+        //Logger::console("Current val: %u", current_value);
         //busv = (frame.buf[2] << 8) | frame.buf[3];
         busv_msg.buf[0] = frame.buf[2];
         busv_msg.buf[1] = frame.buf[3];
@@ -196,7 +196,7 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         SOC_msg.buf[0] = frame.buf[0];
         SOC_msg.buf[1] = frame.buf[1];
         attachedCANBus->sendFrame(SOC_msg);
-        Logger::console("SOC: %u", SOC_value);
+        //Logger::console("SOC: %u", SOC_value);
       }
 //      if (frame.id == 0x303) {
 //    bms_fault_register = ((uint32_t)frame.buf[0] << 24) | ((uint32_t)frame.buf[1] << 16)
@@ -321,7 +321,7 @@ void StatemachineDevice::handleTick() {
   }
     */
   if (button_val_msg){
-      Logger::console("RECEIVED\n");
+      //Logger::console("RECEIVED\n");
       btnPress = 1;
   }
   

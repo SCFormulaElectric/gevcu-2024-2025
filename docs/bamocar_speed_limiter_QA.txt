@@ -289,4 +289,10 @@ Before lowering it, keep in mind:
 - Per the manual, this ramp only applies to torque commands, which is
   how the car drives. It doesn't affect the speed limiter.
 
-(Not implemented yet: MRACC / MRDEC.)
+MRACC / MRDEC are now implemented. Both default to 65535, which means
+"keep the inverter's own value", so nothing changes until you set them.
+Set one back to 65535 to hand control back to the inverter. When a value
+is applied, the console prints a "BAMOCAR SETTINGS (read back):" line with
+OK / MISMATCH / no reply for each value the GEVCU writes, read back from the
+inverter, plus a "BAMOCAR CURRENT LIMITS (read only):" line. They print once
+after startup and again whenever something changes.

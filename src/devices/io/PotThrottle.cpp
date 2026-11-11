@@ -113,7 +113,7 @@ void PotThrottle::handleTick() {
     }
 
     if (fault_brake_throttle_engaged) {
-        Logger::console("plaus falt triggered waiting for under 5%%");
+        //Logger::console("plaus falt triggered waiting for under 5%%");
         if (throttleUnder5) {
             Logger::info("Throttle < 5%% — resuming regular operation.");
             fault_brake_throttle_engaged = false;

@@ -39,7 +39,7 @@
 
 #define POTACCELPEDAL 0x1031
 #define THROTTLE_INPUT_BRAKELIGHT  2
-#define CFG_TICK_INTERVAL_POT_THROTTLE              40000
+#define CFG_TICK_INTERVAL_POT_THROTTLE              10000 // 10 ms; keep equal to CFG_TICK_INTERVAL_MOTOR_CONTROLLER_BAMOCAR
 
 /*
  * The extended configuration class with additional parameters for PotThrottle
