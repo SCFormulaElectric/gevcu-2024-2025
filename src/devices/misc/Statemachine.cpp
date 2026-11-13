@@ -188,7 +188,7 @@ void StatemachineDevice::handleCanFrame(const CAN_message_t &frame) {
         //busv = (frame.buf[2] << 8) | frame.buf[3];
         busv_msg.buf[0] = frame.buf[2];
         busv_msg.buf[1] = frame.buf[3];
-        attachedCANBus->sendFrame(busv_msg);
+        //attachedCANBus->sendFrame(busv_msg);
       }
 
       if (frame.id== 0x302){
